@@ -47,3 +47,4 @@ def create_app(config_class=Config):
     Swagger(app, config=swagger_config)
     
     return app
+  
