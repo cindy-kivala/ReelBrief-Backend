@@ -4,12 +4,14 @@ Owner: Ryan
 Description: Handles user authentication, roles (admin/freelancer/client), and profile data
 """
 
-from app.extensions import db
 from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
+
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from app.extensions import db
 
 # TODO: Ryan - Implement User model
-# 
+#
 # Required fields:
 # - id (Primary Key)
 # - email (Unique, Not Null)
@@ -40,4 +42,4 @@ from werkzeug.security import generate_password_hash, check_password_hash
 #     # ... rest of fields
 
 
-#Ryan you'll always the the first to merge and we'll continue in that order
+# Ryan you'll always the the first to merge and we'll continue in that order

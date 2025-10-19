@@ -4,8 +4,9 @@ Owner: Monica
 Description: Project management with status tracking and skill requirements
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 # TODO: Monica - Implement Project and ProjectSkill models
 #

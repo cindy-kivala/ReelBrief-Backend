@@ -4,10 +4,10 @@ Owner: Caleb
 Description: Track and manage escrow transactions
 """
 
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
-escrow_bp = Blueprint('escrow', __name__)
+escrow_bp = Blueprint("escrow", __name__)
 
 # TODO: Caleb - Implement escrow endpoints
 #

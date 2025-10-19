@@ -4,8 +4,9 @@ Owner: Cindy
 Description: Tracks file uploads with version control and Cloudinary integration
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 # TODO: Cindy - Implement Deliverable model
 #
@@ -40,4 +41,4 @@ from datetime import datetime
 #     id = db.Column(db.Integer, primary_key=True)
 #     # ... rest of fields
 
-#Merge line: Ryan - Monica - Cindy - Caleb
+# Merge line: Ryan - Monica - Cindy - Caleb

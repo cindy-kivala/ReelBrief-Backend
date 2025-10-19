@@ -4,8 +4,9 @@ Owner: Caleb
 Description: Tracks notifications sent to users with email status
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 # TODO: Caleb - Implement Notification model
 #
@@ -35,4 +36,4 @@ from datetime import datetime
 # class Notification(db.Model):
 #     __tablename__ = 'notifications'
 #     id = db.Column(db.Integer, primary_key=True)
-#     # ... rest of fields       
+#     # ... rest of fields

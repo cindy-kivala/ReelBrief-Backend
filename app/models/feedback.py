@@ -4,8 +4,9 @@ Owner: Cindy
 Description: Client feedback with priority levels and threaded comments
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 # TODO: Cindy - Implement Feedback model
 #

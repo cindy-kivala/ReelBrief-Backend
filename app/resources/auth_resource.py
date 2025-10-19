@@ -4,10 +4,10 @@ Owner: Ryan
 Description: User registration, login, email verification, password reset
 """
 
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint("auth", __name__)
 
 # TODO: Ryan - Implement authentication endpoints
 #

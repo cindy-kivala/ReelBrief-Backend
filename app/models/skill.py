@@ -4,8 +4,9 @@ Owner: Monica
 Description: Skills catalog and freelancer-skill associations with proficiency levels
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 # TODO: Monica - Implement Skill and FreelancerSkill models
 #
