@@ -11,6 +11,7 @@ services:
     startCommand: |
       flask db upgrade
       gunicorn -w 4 -b 0.0.0.0:$PORT run:app
+    healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
