@@ -19,7 +19,15 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     mail.init_app(app)
-    CORS(app, resources={r"/api/*": {"origins": app.config["FRONTEND_URL"]}})
+    CORS(app, resources={
+       r"/api/*": {
+          "origins": [
+             "http://localhost:5173",  # Local development
+             "https://reel-brief-frontend.vercel.app/",  # Production
+             # ADD VERCEL PREVIEW URLS
+         ]
+       }
+   })
 
     # Register blueprints
     from app.resources.auth_resource import auth_bp
