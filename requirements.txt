@@ -6,7 +6,7 @@ Flask-CORS==4.0.0
 Flask-RESTful==0.3.10
 Flask-Mail==0.9.1
 python-dotenv==1.0.0
-psycopg2-binary==2.9.9
+psycopg==3.1.18
 marshmallow==3.20.1
 marshmallow-sqlalchemy==0.29.0
 SQLAlchemy-Serializer==1.4.1
