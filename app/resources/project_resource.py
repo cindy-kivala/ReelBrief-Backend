@@ -10,6 +10,8 @@ from app.models.project import Project
 from app.extensions import db
 project_bp = Blueprint('projects', __name__)
 
+@project_bp.route('/', methods=['GET'])
+
 # TODO: Monica - Implement project endpoints
 #
 # Required endpoints:
