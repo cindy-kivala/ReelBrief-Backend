@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
-
+from flask import Flask, jsonify
 from app.config import Config
 from app.extensions import db, jwt, mail, migrate
 
@@ -9,6 +9,10 @@ def create_app(config_class=Config):
     """Application factory pattern"""
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    @app.route("/")
+    def home():
+        return jsonify({"message": "API is live, but empty!"})
 
     # Initialize extensions
     db.init_app(app)
