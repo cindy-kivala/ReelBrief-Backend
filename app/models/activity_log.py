@@ -36,14 +36,14 @@ from app.extensions import db
 class ActivityLog(db.Model):
     __tablename__ = "activity_log"
     id = db.Column(db.Integer, primary_key = True)
-    user_id = db.Column(db.Integer,ForeignKey = True,nullable = True)
+    user_id = db.Column(db.Integer,db.ForeignKey("user.id"),nullable = True)
     action = db.Column(db.String)
     resource_type = db.Column(db.String)
     resource_id = db.Column(db.Integer)
     details = db.Column(db.String,JSONB)
     ip_address = db.Column(db.String, INET)
     user_agent = db.Column(db.String)
-    created_at = db.Column(db.String, datetime.now())
+    created_at = db.Column(db.DateTime, datetime.now())
 
     def __repr__(self):
-        return f"<ActivityLog {self.id} {self.action} {self.resource_type}"
+        return f"<ActivityLog {self.id} {self.action} {self.resource_type}>"

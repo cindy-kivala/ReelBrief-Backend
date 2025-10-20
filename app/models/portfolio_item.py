@@ -32,9 +32,21 @@ from app.extensions import db
 # Methods:
 # - to_dict()
 #
-# Example:
-# class PortfolioItem(db.Model):
-#     __tablename__ = 'portfolio_items'
-#     id = db.Column(db.Integer, primary_key=True)
-#     tags = db.Column(ARRAY(db.Text))
-#     # ... rest of fields
+
+
+class PortfolioItem(db.Model):
+    __tablename__ = "portfolio_items"
+    id = db.Column(db.Integer, primary_key = True)
+    freelancer_id = db.Column(db.Integer,db.ForeignKey("freelancer.id"))
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"))
+    title = db.Column(db.String)
+    description = db.Column(db.String)
+    cover_image_url = db.Column(db.String ,nullable = True)
+    project_url = db.Column(db.String)
+    tags = db.Column(ARRAY(db.String))
+    display_order = db.Column(db.Integer)
+    is_featured = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, datetime.now())
+
+    def __repr__(self):
+        return f"<PortfolioItem {self.id} {self.title} {self.project_id} {self.description}>"
