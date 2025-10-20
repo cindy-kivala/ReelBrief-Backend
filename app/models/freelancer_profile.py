@@ -1,6 +1,6 @@
 """
 Freelancer Profile Model
-Owner: Monica
+Owner: Ryan
 Description: Extended profile for freelancers with CV, skills, and availability status
 """
 
@@ -8,7 +8,7 @@ from datetime import datetime
 
 from app.extensions import db
 
-# TODO: Monica - Implement FreelancerProfile model
+# TODO: Ryan - Implement FreelancerProfile model
 #
 # Required fields:
 # - id (Primary Key)
@@ -38,4 +38,4 @@ from app.extensions import db
 #     id = db.Column(db.Integer, primary_key=True)
 #     # ... rest of fields
 
-# Monica you'll always be the second to do merging. Always confirm with Ryan that he's merged before you merge
+# Ryan you'll always be the second to do merging. Always confirm with Ryan that he's merged before you merge

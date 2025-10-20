@@ -1,6 +1,6 @@
 """
 Notification Model - Email & In-App Notifications
-Owner: Caleb
+Owner: Ryan
 Description: Tracks notifications sent to users with email status
 """
 
@@ -8,7 +8,7 @@ from datetime import datetime
 
 from app.extensions import db
 
-# TODO: Caleb - Implement Notification model
+# TODO: Ryan - Implement Notification model
 #
 # Required fields:
 # - id (Primary Key)
