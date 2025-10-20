@@ -4,10 +4,10 @@ Owner: Caleb
 Description: Submit and view reviews for completed projects.
 """
 
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
-review_bp = Blueprint('reviews', __name__)
+review_bp = Blueprint("reviews", __name__)
 
 # TODO: Caleb - Implement review endpoints
 #

@@ -4,9 +4,11 @@ Owner: Caleb
 Description: Tracks all important actions in the system for auditing
 """
 
-from app.extensions import db
 from datetime import datetime
-from sqlalchemy.dialects.postgresql import JSONB, INET
+
+from sqlalchemy.dialects.postgresql import INET, JSONB
+
+from app.extensions import db
 
 # TODO: Caleb - Implement ActivityLog model
 #

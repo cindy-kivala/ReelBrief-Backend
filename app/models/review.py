@@ -4,8 +4,9 @@ Owner: Caleb
 Description: Star ratings and reviews for completed projects
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 # TODO: Caleb - Implement Review model
 #

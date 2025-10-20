@@ -4,9 +4,11 @@ Owner: Caleb
 Description: Approved projects automatically added to freelancer portfolios
 """
 
-from app.extensions import db
 from datetime import datetime
+
 from sqlalchemy.dialects.postgresql import ARRAY
+
+from app.extensions import db
 
 # TODO: Caleb - Implement PortfolioItem model
 #

@@ -4,10 +4,10 @@ Owner: Monica
 Description: CV review, approval workflow, availability management
 """
 
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
-freelancer_bp = Blueprint('freelancers', __name__)
+freelancer_bp = Blueprint("freelancers", __name__)
 
 # TODO: Monica - Implement freelancer endpoints
 #

@@ -5,9 +5,9 @@ Description: Provides summary data for freelancers, clients, and admins.
 """
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
-dashboard_bp = Blueprint('dashboard', __name__)
+dashboard_bp = Blueprint("dashboard", __name__)
 
 # TODO: Caleb - Implement dashboard endpoints
 #

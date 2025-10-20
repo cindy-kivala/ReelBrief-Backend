@@ -4,10 +4,10 @@ Owner: Ryan
 Description: Get and update user profiles
 """
 
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 
-user_bp = Blueprint('users', __name__)
+user_bp = Blueprint("users", __name__)
 
 # TODO: Ryan - Implement user endpoints
 #

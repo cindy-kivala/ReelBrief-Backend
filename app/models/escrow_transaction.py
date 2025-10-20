@@ -4,8 +4,9 @@ Owner: Caleb
 Description: Tracks payment flow from client → escrow → freelancer
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 # TODO: Caleb - Implement EscrowTransaction model
 #
@@ -36,4 +37,4 @@ from datetime import datetime
 #     id = db.Column(db.Integer, primary_key=True)
 #     # ... rest of fields
 
-#Caleb before you merge anything make sure the first three From Ryan to me have merge to avoid breaks and conflicts
+# Caleb before you merge anything make sure the first three From Ryan to me have merge to avoid breaks and conflicts
