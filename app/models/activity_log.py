@@ -44,3 +44,6 @@ class ActivityLog(db.Model):
     ip_address = db.Column(db.String, INET)
     user_agent = db.Column(db.String)
     created_at = db.Column(db.String, datetime.now())
+
+    def __repr__(self):
+        return f"<ActivityLog {self.id} {self.action} {self.resource_type}"

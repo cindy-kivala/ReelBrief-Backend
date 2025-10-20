@@ -48,4 +48,7 @@ class EscrowTransaction(db.Model):
     held_at = db.Column(db.String, datetime.now())
     released_at = db.Column(db.String,datetime.now())
 
+    def __repr__(self):
+        return f"<EscrowTransaction {self.id}  {self.project_id} ${self.amount} {self.client_id} {self.freelancer_id}>"
+
 # Caleb before you merge anything make sure the first three From Ryan to me have merge to avoid breaks and conflicts
