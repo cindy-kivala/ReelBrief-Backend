@@ -22,7 +22,7 @@ from app.extensions import db
 # - invoice_url
 # - payment_method
 # - held_at, released_at, refunded_at
-# - notes
+# - notes -ask Cindy about this
 #
 # Relationships:
 # - transaction belongs to project (one-to-one)
@@ -30,11 +30,22 @@ from app.extensions import db
 #
 # Methods:
 # - to_dict()
-#
-# Example:
-# class EscrowTransaction(db.Model):
-#     __tablename__ = 'escrow_transactions'
-#     id = db.Column(db.Integer, primary_key=True)
-#     # ... rest of fields
+
+
+class EscrowTransaction(db.Model):
+    __tablename__ = 'escrow_transactions'
+    id = db.Column(db.Integer, primary_key = True)
+    project_id = db.Column(db.Integer, )
+    client_id = db.Column(db.Integer, db.ForeignKey("client.id"), nullable = False)
+    freelancer_id = db.Column(db.Integer, db.relationship("freelancer.id"), nullable = False)
+    admin_id = db.Column(db.Integer, db.relationship("admin.id"), nullable = False)
+
+    amount = db.Column(db.Integer) #set the default as USD
+    status = db.Column(db.String)
+    invoice_number = db.Column(db.Integer, unique = True)
+    invoice_url = db.Column(db.String)
+
+    held_at = db.Column(db.String, datetime.now())
+    released_at = db.Column(db.String,datetime.now())
 
 # Caleb before you merge anything make sure the first three From Ryan to me have merge to avoid breaks and conflicts
