@@ -10,7 +10,8 @@ from app.extensions import db
 
 # TODO: Cindy - Implement Deliverable model
 #
-# Required fields:
+
+# Required fields: 
 # - id (Primary Key)
 # - project_id (Foreign Key to projects)
 # - version_number (Integer, default 1)
