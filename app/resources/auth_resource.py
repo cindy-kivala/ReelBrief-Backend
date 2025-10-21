@@ -4,7 +4,6 @@ Owner: Ryan
 Description: Handles user registration, login, email verification, and password reset.
 """
 
-<<<<<<< HEAD
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import (
     create_access_token,
@@ -18,12 +17,6 @@ import secrets
 from app import db
 from app.models.user import User
 from app.services.email_service import send_verification_email, send_password_reset_email
-=======
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
-
-auth_bp = Blueprint("auth", __name__)
->>>>>>> ff4724d807d7665616d599d1618686a703db37da
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
@@ -141,7 +134,6 @@ def me():
 
 # --------------------------------------------------------
 # POST /api/auth/reset-password
-<<<<<<< HEAD
 # --------------------------------------------------------
 @auth_bp.post("/reset-password")
 def reset_password():
@@ -178,16 +170,3 @@ def reset_password():
         return jsonify({"message": "Password reset successful"}), 200
 
     return jsonify({"error": "Invalid request"}), 400
-=======
-# - Accept: email (step 1) or token + new_password (step 2)
-# - Step 1: Generate reset token, send email
-# - Step 2: Verify token, update password
-# - Return: success message
-#
-# Example:
-# @auth_bp.route('/register', methods=['POST'])
-# def register():
-#     data = request.get_json()
-#     # ... implementation
-#     return jsonify({'message': 'User registered'}), 201
->>>>>>> ff4724d807d7665616d599d1618686a703db37da

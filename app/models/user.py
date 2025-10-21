@@ -1,13 +1,11 @@
 """
 User Model - Authentication & RBAC
 Owner: Ryan
-Description: Handles user authentication, roles (admin/freelancer/client), and profile data
+Description: Handles user authentication, roles (admin/freelancer/client), and profile data.
 """
 
 from datetime import datetime
-
-from werkzeug.security import check_password_hash, generate_password_hash
-
+from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 
 
@@ -35,23 +33,16 @@ class User(db.Model):
 
     # -------------------- Timestamps --------------------
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
 
     # -------------------- Relationships --------------------
-    # Example placeholder relationships (define actual models later)
     freelancer_profile = db.relationship(
-        "FreelancerProfile", back_populates="user", uselist=False
+        "FreelancerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-    projects_as_client = db.relationship(
-        "Project", back_populates="client", foreign_keys="Project.client_id"
+    notifications = db.relationship(
+        "Notification", back_populates="user", cascade="all, delete-orphan"
     )
-    projects_as_freelancer = db.relationship(
-        "Project", back_populates="freelancer", foreign_keys="Project.freelancer_id"
-    )
-    notifications = db.relationship("Notification", back_populates="user")
 
     # -------------------- Methods --------------------
     def set_password(self, password: str):
@@ -61,6 +52,10 @@ class User(db.Model):
     def check_password(self, password: str) -> bool:
         """Validate password hash."""
         return check_password_hash(self.password_hash, password)
+
+    def get_identity(self):
+        """Return identity payload for JWT claims."""
+        return {"id": self.id, "email": self.email, "role": self.role}
 
     def to_dict(self):
         """Return a JSON-serializable user representation."""
@@ -79,49 +74,5 @@ class User(db.Model):
             "last_login": self.last_login.isoformat() if self.last_login else None,
         }
 
-    # Optional helper for JWT identity
-    def get_identity(self):
-        """Return identity payload for JWT claims."""
-        return {
-            "id": self.id,
-            "email": self.email,
-            "role": self.role,
-        }
-
     def __repr__(self):
         return f"<User {self.email} ({self.role})>"
-
-
-# TODO: Ryan - Implement User model
-#
-# Required fields:
-# - id (Primary Key)
-# - email (Unique, Not Null)
-# - password_hash (Not Null)
-# - role (admin, freelancer, client)
-# - first_name, last_name
-# - phone, avatar_url
-# - is_active, is_verified
-# - verification_token
-# - created_at, updated_at, last_login
-#
-# Relationships:
-# - freelancer_profile (one-to-one)
-# - projects_as_client (one-to-many)
-# - projects_as_freelancer (one-to-many)
-# - notifications (one-to-many)
-#
-# Methods:
-# - set_password(password)
-# - check_password(password)
-# - to_dict()
-#
-# Example structure:
-# class User(db.Model):
-#     __tablename__ = 'users'
-#     id = db.Column(db.Integer, primary_key=True)
-#     email = db.Column(db.String(255), unique=True, nullable=False)
-#     # ... rest of fields
-
-
-# Ryan you'll always the the first to merge and we'll continue in that order
