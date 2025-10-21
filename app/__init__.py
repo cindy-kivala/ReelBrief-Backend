@@ -9,7 +9,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from flasgger import Swagger
 from app.config import Config
-from app.extensions import db, migrate, jwt, mail
+from app.extensions import db, migrate, jwt, ma, mail
 from app.utils.jwt_handlers import register_jwt_error_handlers
 from app.utils.error_handlers import register_error_handlers
 import os
@@ -27,12 +27,13 @@ def create_app(config_class=Config):
     # -------------------- Health Check Route --------------------
     @app.route("/")
     def home():
-        return jsonify({"message": "API is live, but empty!"}), 200
+        return jsonify({"message": "🎬 ReelBrief API is live!"}), 200
 
     # -------------------- Initialize Extensions --------------------
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+    ma.init_app(app)
     mail.init_app(app)
 
     # -------------------- Register Error Handlers --------------------
@@ -40,7 +41,7 @@ def create_app(config_class=Config):
     register_error_handlers(app)
 
     # -------------------- Configure CORS --------------------
-    # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reel-brief-frontend.vercel.app
+    # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reelbrief.vercel.app
     frontend_urls = os.getenv("FRONTEND_URLS", "http://localhost:5173").split(",")
     CORS(app, resources={r"/api/*": {"origins": frontend_urls}})
 
@@ -73,7 +74,6 @@ def create_app(config_class=Config):
         "specs_route": "/api/docs/",
     }
 
-    # Add optional custom Swagger template
     swagger_template = {
         "info": {
             "title": "🎬 ReelBrief API",

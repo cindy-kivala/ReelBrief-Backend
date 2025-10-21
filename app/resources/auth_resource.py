@@ -1,12 +1,13 @@
 """
 Authentication Resource - Auth Endpoints
 Owner: Ryan
-Description: Handles user registration, login, email verification, and password reset.
+Description: Handles user registration, login, refresh token, email verification, and password reset.
 """
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import (
     create_access_token,
+    create_refresh_token,
     jwt_required,
     get_jwt_identity
 )
@@ -15,10 +16,11 @@ from datetime import datetime, timedelta
 import secrets
 
 from app import db
-from app.models.user import User
+from app.models import User
 from app.services.email_service import send_verification_email, send_password_reset_email
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
+
 
 # --------------------------------------------------------
 # POST /api/auth/register
@@ -26,30 +28,26 @@ auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 @auth_bp.post("/register")
 def register():
     data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
-    role = data.get("role")
-    first_name = data.get("first_name")
-    last_name = data.get("last_name")
+    required_fields = ["email", "password", "role", "first_name", "last_name"]
 
-    if not all([email, password, role, first_name, last_name]):
+    if not all(data.get(field) for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
-    if User.query.filter_by(email=email).first():
+    if User.query.filter_by(email=data["email"]).first():
         return jsonify({"error": "Email already exists"}), 409
 
     # Hash password
-    hashed_password = generate_password_hash(password)
+    hashed_password = generate_password_hash(data["password"])
 
     # Create verification token
     verification_token = secrets.token_urlsafe(32)
 
     user = User(
-        email=email,
+        email=data["email"],
         password_hash=hashed_password,
-        role=role,
-        first_name=first_name,
-        last_name=last_name,
+        role=data["role"],
+        first_name=data["first_name"],
+        last_name=data["last_name"],
         is_active=False,
         is_verified=False,
         verification_token=verification_token,
@@ -59,7 +57,7 @@ def register():
     db.session.commit()
 
     # Send verification email
-    send_verification_email(email, verification_token)
+    send_verification_email(user.email, verification_token)
 
     return jsonify({"message": "User registered. Please verify your email."}), 201
 
@@ -74,7 +72,7 @@ def login():
     password = data.get("password")
 
     if not email or not password:
-        return jsonify({"error": "Missing email or password"}), 400
+        return jsonify({"error": "Email and password required"}), 400
 
     user = User.query.filter_by(email=email).first()
     if not user or not check_password_hash(user.password_hash, password):
@@ -87,15 +85,34 @@ def login():
     user.last_login = datetime.utcnow()
     db.session.commit()
 
-    # Create JWT
+    # JWT claims
     claims = {"role": user.role, "email": user.email}
     access_token = create_access_token(
         identity=user.id,
         additional_claims=claims,
-        expires_delta=timedelta(hours=1)
+        expires_delta=timedelta(hours=3)
     )
+    refresh_token = create_refresh_token(identity=user.id)
 
-    return jsonify({"access_token": access_token, "user": user.to_dict()}), 200
+    return jsonify({
+        "user": user.to_dict(),
+        "access_token": access_token,
+        "refresh_token": refresh_token
+    }), 200
+
+
+# --------------------------------------------------------
+# POST /api/auth/refresh
+# --------------------------------------------------------
+@auth_bp.post("/refresh")
+@jwt_required(refresh=True)
+def refresh():
+    """Issue new access token using refresh token"""
+    current_user = get_jwt_identity()
+    new_access_token = create_access_token(
+        identity=current_user, expires_delta=timedelta(hours=3)
+    )
+    return jsonify({"access_token": new_access_token}), 200
 
 
 # --------------------------------------------------------
@@ -107,7 +124,7 @@ def verify_email():
     token = data.get("token")
 
     if not token:
-        return jsonify({"error": "Missing token"}), 400
+        return jsonify({"error": "Missing verification token"}), 400
 
     user = User.query.filter_by(verification_token=token).first()
     if not user:
@@ -127,8 +144,11 @@ def verify_email():
 @auth_bp.get("/me")
 @jwt_required()
 def me():
+    """Return the currently authenticated user"""
     user_id = get_jwt_identity()
-    user = User.query.get_or_404(user_id)
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
     return jsonify(user.to_dict()), 200
 
 
@@ -137,6 +157,10 @@ def me():
 # --------------------------------------------------------
 @auth_bp.post("/reset-password")
 def reset_password():
+    """
+    Step 1: User submits email -> sends reset link
+    Step 2: User submits token + new_password -> updates password
+    """
     data = request.get_json()
     email = data.get("email")
     token = data.get("token")
@@ -153,14 +177,14 @@ def reset_password():
         user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
         db.session.commit()
 
-        send_password_reset_email(email, reset_token)
+        send_password_reset_email(user.email, reset_token)
         return jsonify({"message": "Password reset link sent to your email"}), 200
 
-    # Step 2: Reset password using token
+    # Step 2: Use token to reset password
     if token and new_password:
         user = User.query.filter_by(reset_token=token).first()
         if not user or user.reset_token_expires < datetime.utcnow():
-            return jsonify({"error": "Invalid or expired token"}), 400
+            return jsonify({"error": "Invalid or expired reset token"}), 400
 
         user.password_hash = generate_password_hash(new_password)
         user.reset_token = None
