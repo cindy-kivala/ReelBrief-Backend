@@ -8,23 +8,25 @@ from datetime import datetime
 
 from app.extensions import db
 
-# TODO: Cindy - Implement Feedback model
-#
-# Required fields:
-# - id (Primary Key)
-# - deliverable_id (Foreign Key to deliverables)
-# - user_id (Foreign Key to users)
-# - feedback_type (comment, revision, approval)
-# - content (Text, Not Null)
-# - priority (low, medium, high)
-# - is_resolved (Boolean, default False)
-# - parent_feedback_id (Foreign Key to feedback, for threaded replies)
-# - created_at, resolved_at
-#
+class Feedback(db.Model):
+    __tablename__ = 'feedback'
+
+    # Primary Key
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Foreign Keys
+    deliverable_id = db.Column(db.Integer, db.ForeignKey('deliverables.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    parent_feedback_id = db.Column(db.Integer, db.ForeignKey('feedback.id'), nullable=True)  # For threaded replies
+    
 # Relationships:
 # - feedback belongs to deliverable
 # - feedback belongs to author (User)
 # - feedback has many replies (self-referential)
+     # Relationships
+    deliverable = db.relationship('Deliverable', back_populates='feedback_items')
+    author = db.relationship('User', foreign_keys=[user_id], backref='feedback_given')
+    
 #
 # Methods:
 # - to_dict()
