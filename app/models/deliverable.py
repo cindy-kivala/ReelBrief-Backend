@@ -76,14 +76,46 @@ class Deliverable(db.Model):
         db.Index('idx_deliverables_project', 'project_id'),
         db.Index('idx_deliverables_version', 'project_id', 'version_number'),
     )
-    
-# Methods:
-# - to_dict()
-#
-# Example:
-# class Deliverable(db.Model):
-#     __tablename__ = 'deliverables'
-#     id = db.Column(db.Integer, primary_key=True)
-#     # ... rest of fields
 
-# Merge line: Ryan - Monica - Cindy - Caleb
+# Methods:
+    def __repr__(self):
+        return f'<Deliverable {self.id} v{self.version_number} - {self.title}>'
+
+    def to_dict(self, include_feedback=False):
+        """Convert deliverable to dictionary representation"""
+        data = {
+            'id': self.id,
+            'project_id': self.project_id,
+            'version_number': self.version_number,
+            'file_url': self.file_url,
+            'file_type': self.file_type,
+            'file_size': self.file_size,
+            'cloudinary_public_id': self.cloudinary_public_id,
+            'thumbnail_url': self.thumbnail_url,
+            'title': self.title,
+            'description': self.description,
+            'change_notes': self.change_notes,
+            'status': self.status,
+            'uploaded_by': self.uploaded_by,
+            'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None,
+            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
+            'reviewed_by': self.reviewed_by,
+            'uploader': {
+                'id': self.uploader.id,
+                'first_name': self.uploader.first_name,
+                'last_name': self.uploader.last_name,
+                'email': self.uploader.email
+            } if self.uploader else None,
+            'reviewer': {
+                'id': self.reviewer.id,
+                'first_name': self.reviewer.first_name,
+                'last_name': self.reviewer.last_name
+            } if self.reviewer else None
+        }
+        
+        if include_feedback:
+            data['feedback'] = [f.to_dict() for f in self.feedback_items]
+        
+        return data
+
+
