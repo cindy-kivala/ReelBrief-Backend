@@ -14,7 +14,8 @@ class Deliverable(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     
     # Foreign Keys
-    project_id = db.Column(db.Integer, nullable=False) # ADD db.ForeignKey('projects.id', ondelete='CASCADE') after Project merge
+    project_id = db.Column(db.Integer, nullable=False) 
+    # ADD db.ForeignKey('projects.id', ondelete='CASCADE') after Project merge
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
@@ -54,7 +55,7 @@ class Deliverable(db.Model):
     # project = db.relationship('Project', back_populates='deliverables')
     uploader = db.relationship('User', foreign_keys=[uploaded_by], backref='uploaded_deliverables')
     reviewer = db.relationship('User', foreign_keys=[reviewed_by], backref='reviewed_deliverables')
-    # feedback_items = db.relationship('Feedback', back_populates='deliverable', cascade='all, delete-orphan')
+    feedback_items = db.relationship('Feedback', back_populates='deliverable', cascade='all, delete-orphan')
 
 # indexes for faster queries
     __table_args__ = (
@@ -99,8 +100,8 @@ class Deliverable(db.Model):
         }
         
         #ADD AFTER FEEDBACK IS READY
-        # if include_feedback:
-        #     data['feedback'] = [f.to_dict() for f in self.feedback_items]
+        if include_feedback:
+            data['feedback'] = [f.to_dict() for f in self.feedback_items]
         
         return data
 
