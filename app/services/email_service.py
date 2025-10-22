@@ -3,9 +3,10 @@ Email Service
 Owner: Caleb
 Description: Handles all email notifications and templating for system messages.
 """
-from sendgrid.helpers.mail import Mail
-from extensions import sg
 import os
+
+from extensions import sg
+from sendgrid.helpers.mail import Mail
 
 FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "noreply@reelbrief.com")
 

@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import INET, JSONB
 
 from app.extensions import db
 
+
 # TODO: Caleb - Implement ActivityLog model
 #
 # Required fields:
