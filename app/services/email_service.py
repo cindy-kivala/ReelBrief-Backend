@@ -34,7 +34,7 @@ def send_password_reset_email(user):
     Sends a password reset link to the user.
     """
     reset_link = f"https://reelbrief.com/reset-password/{user.reset_token}"
-    html_content = f""" 
+    html_content = f"""
     <h3>Password Reset Request</h3>
     <p>Hello {user.name},</p>
     <p>Click the link below to reset your password:</p>
