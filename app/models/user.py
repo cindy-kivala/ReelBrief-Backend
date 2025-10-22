@@ -37,9 +37,16 @@ class User(db.Model):
     last_login = db.Column(db.DateTime)
 
     # -------------------- Relationships --------------------
+    # freelancer_profile = db.relationship(
+    #     "FreelancerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    # )
     freelancer_profile = db.relationship(
-        "FreelancerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    'FreelancerProfile', 
+    back_populates='user', 
+    uselist=False,
+    foreign_keys='FreelancerProfile.user_id'  
     )
+
     notifications = db.relationship(
         "Notification", back_populates="user", cascade="all, delete-orphan"
     )

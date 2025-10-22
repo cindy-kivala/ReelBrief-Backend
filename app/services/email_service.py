@@ -1,25 +1,3 @@
-# """
-# Email Service
-# Owner: Caleb
-# Description: Handles all email notifications and templating for system messages.
-# """
-
-# # TODO: Caleb - Implement Email Service
-# #
-# # Required functions:
-# #
-# # def send_email(recipient, subject, template_name, context):
-# #     """Send a templated email."""
-# #
-# # def send_password_reset_email(user):
-# #     """Send password reset instructions."""
-# #
-# # def send_project_assignment_email(project, freelancer):
-# #     """Notify freelancer of new project."""
-# #
-# # def send_payment_notification(transaction):
-# #     """Notify freelancer or client about payment updates."""
-
 
 """
 Email Service
@@ -54,7 +32,7 @@ def send_email(recipient, subject, html_content):
         return False
 
 
-def send_password_reset_email(user_email):
+def send_password_reset_email(user): #CONFIRM WITH RYAN IF ITS CLAS OROBJ user or user.email
     """
     Sends a password reset link to the user.
     """
@@ -124,19 +102,6 @@ def send_deliverable_feedback_notification(user_email, deliverable_title, feedba
     """
     return send_email(user_email, "New Feedback - ReelBrief", html_content)
 
-
-def send_deliverable_feedback_notification(user_email, deliverable_title, feedback_content):
-    """
-    Notifies freelancer of new feedback on their deliverable.
-    """
-    html_content = f"""
-    <h3>New Feedback on Your Deliverable</h3>
-    <p>Hello,</p>
-    <p>You have received new feedback on: <b>{deliverable_title}</b></p>
-    <p><i>"{feedback_content[:200]}..."</i></p>
-    <p>Please log in to your dashboard to view full feedback and respond.</p>
-    """
-    return send_email(user_email, "New Feedback - ReelBrief", html_content)
 
 def send_deliverable_approved_notification(user_email, deliverable_title, project_name):
     """

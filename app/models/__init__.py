@@ -16,7 +16,7 @@ from app.models.deliverable import Deliverable
 from app.models.feedback import Feedback
 # from app.models.escrow_transaction import EscrowTransaction
 # from app.models.portfolio_item import PortfolioItem
-# from app.models.notification import Notification
+from app.models.notification import Notification
 # from app.models.review import Review
 # from app.models.activity_log import ActivityLog
 
@@ -33,7 +33,7 @@ __all__ = [
     'Feedback',
     # 'EscrowTransaction',
     # 'PortfolioItem',
-    # 'Notification',
+    'Notification',
     # 'Review',
     # 'ActivityLog'
 ]

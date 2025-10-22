@@ -200,6 +200,58 @@ def verify_sample_data():
         cur.close()
         conn.close()
 
+# In your test_deliverables.py or create a new seed file
+def create_verified_users():
+    """Create verified users with known passwords for testing"""
+    import psycopg2
+    from datetime import datetime
+    from dotenv import load_dotenv
+    from werkzeug.security import generate_password_hash
+    load_dotenv()
+    
+    conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+    cur = conn.cursor()
+    
+    print("Creating verified users for testing...")
+    
+    try:
+        current_time = datetime.utcnow()
+        known_password = "password123"  # Simple password for testing
+        hashed_password = generate_password_hash(known_password)
+        
+        # Delete existing test users if they exist
+        cur.execute("DELETE FROM users WHERE email IN ('test.client@example.com', 'freelancer@example.com')")
+        
+        # Create verified client user
+        cur.execute("""
+            INSERT INTO users (email, password_hash, first_name, last_name, role, is_active, is_verified, created_at, updated_at) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+        """, (
+            'test.client@example.com', hashed_password, 'John', 'Client', 'client', True, True, current_time, current_time
+        ))
+        client_id = cur.fetchone()[0]
+        
+        # Create verified freelancer user
+        cur.execute("""
+            INSERT INTO users (email, password_hash, first_name, last_name, role, is_active, is_verified, created_at, updated_at) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+        """, (
+            'freelancer@example.com', hashed_password, 'Sarah', 'Designer', 'freelancer', True, True, current_time, current_time
+        ))
+        freelancer_id = cur.fetchone()[0]
+        
+        conn.commit()
+        print("Verified users created successfully!")
+        print(f"   - Client: test.client@example.com / password123")
+        print(f"   - Freelancer: freelancer@example.com / password123")
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Error creating users: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
 if __name__ == "__main__":
     test_tables_directly()
     # create_sample_data()

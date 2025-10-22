@@ -194,3 +194,5 @@ def reset_password():
         return jsonify({"message": "Password reset successful"}), 200
 
     return jsonify({"error": "Invalid request"}), 400
+
+
