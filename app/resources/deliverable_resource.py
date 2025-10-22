@@ -276,6 +276,36 @@ def delete_deliverable(deliverable_id):
         current_app.logger.error(f"Error deleting deliverable: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to delete deliverable'}), 500
 
+
+#
+# GET /api/deliverables/:id/versions
+# - Requires: JWT auth
+# - Return: all versions of this deliverable (by project_id)
+# - Useful for version comparison
+
+@deliverable_bp.route('/<int:deliverable_id>/versions', methods=['GET'])
+@jwt_required()
+def get_deliverable_versions(deliverable_id):
+    """Get all versions of a deliverable (by project)"""
+    try:
+        deliverable = Deliverable.query.get_or_404(deliverable_id)
+        project_id = deliverable.project_id
+        
+        # Get all deliverables for this project
+        versions = Deliverable.query.filter_by(project_id=project_id).order_by(
+            Deliverable.version_number.asc()
+        ).all()
+        
+        return jsonify({
+            'success': True,
+            'versions': [v.to_dict(include_feedback=False) for v in versions],
+            'total_versions': len(versions)
+        }), 200
+    
+    except Exception as e:
+        current_app.logger.error(f"Error fetching versions: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch versions'}), 500
+
 #
 # POST /api/deliverables/:id/approve
 # - Requires: JWT auth (client or admin)
@@ -291,8 +321,3 @@ def delete_deliverable(deliverable_id):
 # - Create feedback record
 # - Send notification to freelancer
 # - Return: deliverable + feedback
-#
-# GET /api/deliverables/:id/versions
-# - Requires: JWT auth
-# - Return: all versions of this deliverable (by project_id)
-# - Useful for version comparison
