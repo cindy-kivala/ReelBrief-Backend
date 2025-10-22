@@ -46,7 +46,8 @@ class PortfolioItem(db.Model):
     tags = db.Column(ARRAY(db.String))
     display_order = db.Column(db.Integer)
     is_featured = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, datetime.now())
+    #created_at = db.Column(db.DateTime, datetime.now())
+    created_at = db.Column(db.DateTime, default=db.func.now())
 
     def __repr__(self):
         return f"<PortfolioItem {self.id} {self.title} {self.project_id} {self.description}>"

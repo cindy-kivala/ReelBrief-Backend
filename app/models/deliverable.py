@@ -8,12 +8,24 @@ from datetime import datetime
 
 from app.extensions import db
 
+
+
 # TODO: Cindy - Implement Deliverable model
 #
 
 # Required fields: 
 # - id (Primary Key)
 # - project_id (Foreign Key to projects)
+class Deliverable(db.Model):
+    __tablename__ = 'deliverables'
+
+    # Primary Key
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Foreign Keys
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 # - version_number (Integer, default 1)
 # - file_url (Not Null, from Cloudinary)
 # - file_type (image, video, document)

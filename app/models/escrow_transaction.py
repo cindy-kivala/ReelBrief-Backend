@@ -35,20 +35,27 @@ from app.extensions import db
 class EscrowTransaction(db.Model):
     __tablename__ = "escrow_transactions"
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(
-        db.Integer,
-    )
-    client_id = db.Column(db.Integer, db.ForeignKey("client.id"), nullable=False)
-    freelancer_id = db.Column(db.Integer, db.relationship("freelancer.id"), nullable=False)
-    admin_id = db.Column(db.Integer, db.relationship("admin.id"), nullable=False)
+    # project_id = db.Column(
+    #     db.Integer,
+    # )
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), unique=True, nullable=False)
+    # client_id = db.Column(db.Integer, db.ForeignKey("client.id"), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    #freelancer_id = db.Column(db.Integer, db.relationship("freelancer.id"), nullable=False)
+    freelancer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    #admin_id = db.Column(db.Integer, db.relationship("admin.id"), nullable=False)
+    admin_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
     amount = db.Column(db.Integer)  # set the default as USD
     status = db.Column(db.String)
     invoice_number = db.Column(db.Integer, unique=True)
     invoice_url = db.Column(db.String)
 
-    held_at = db.Column(db.String, datetime.now())
-    released_at = db.Column(db.String, datetime.now())
+    # held_at = db.Column(db.String, datetime.now())
+    # released_at = db.Column(db.String, datetime.now())
+    held_at = db.Column(db.DateTime, default=db.func.now())
+    released_at = db.Column(db.DateTime, nullable=True)
+    #refunded_at = db.Column(db.DateTime, nullable=True)  # Confirm if Caleb can add this
 
     def __repr__(self):
         return f"<EscrowTransaction {self.id}  {self.project_id} ${self.amount} {self.client_id} {self.freelancer_id}>"

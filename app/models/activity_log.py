@@ -41,10 +41,11 @@ class ActivityLog(db.Model):
     action = db.Column(db.String)
     resource_type = db.Column(db.String)
     resource_id = db.Column(db.Integer)
-    details = db.Column(db.String, JSONB)
-    ip_address = db.Column(db.String, INET)
+    details = db.Column(JSONB)
+    ip_address = db.Column(INET)
     user_agent = db.Column(db.String)
-    created_at = db.Column(db.DateTime, datetime.now())
+    # created_at = db.Column(db.DateTime, datetime.now())
+    created_at = db.Column(db.DateTime, default=db.func.now())
 
     def __repr__(self):
         return f"<ActivityLog {self.id} {self.action} {self.resource_type}>"
