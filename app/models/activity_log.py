@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import INET, JSONB
 
 from app.extensions import db
 
+
 # TODO: Caleb - Implement ActivityLog model
 #
 # Required fields:
@@ -33,10 +34,17 @@ from app.extensions import db
 # Methods:
 # - to_dict()
 #
-# Example:
-# class ActivityLog(db.Model):
-#     __tablename__ = 'activity_log'
-#     id = db.Column(db.Integer, primary_key=True)
-#     details = db.Column(JSONB)
-#     ip_address = db.Column(INET)
-#     # ... rest of fields
+class ActivityLog(db.Model):
+    __tablename__ = "activity_log"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    action = db.Column(db.String)
+    resource_type = db.Column(db.String)
+    resource_id = db.Column(db.Integer)
+    details = db.Column(db.String, JSONB)
+    ip_address = db.Column(db.String, INET)
+    user_agent = db.Column(db.String)
+    created_at = db.Column(db.DateTime, datetime.now())
+
+    def __repr__(self):
+        return f"<ActivityLog {self.id} {self.action} {self.resource_type}>"
