@@ -30,32 +30,67 @@ Replace with real Flask-Mail or SendGrid integration in production.
 """
 
 import os
-from flask import current_app
+
+from extensions import sg
+from sendgrid.helpers.mail import Mail
+
+FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "noreply@reelbrief.com")
 
 
-def send_verification_email(to_email, token):
+def send_email(recipient, subject, html_content):
     """
-    Mock verification email sender.
-    Prints the message instead of sending it.
+    Generic email sender using SendGrid.
     """
-    base_url = current_app.config.get("FRONTEND_URLS", "http://localhost:5173").split(",")[0]
-    verify_link = f"{base_url}/verify?token={token}"
+    message = Mail(
+        from_email=FROM_EMAIL, to_emails=recipient, subject=subject, html_content=html_content
+    )
 
-    print("\n📧 [Mock Email] Verification Email")
-    print(f"To: {to_email}")
-    print(f"Subject: Verify your ReelBrief account")
-    print(f"Verification link: {verify_link}\n")
+    try:
+        response = sg.send(message)
+        print(f"Email sent to {recipient}, status: {response.status_code}")
+        return True
+    except Exception as e:
+        print(f"Error sending email to {recipient}: {e}")
+        return False
 
 
-def send_password_reset_email(to_email, token):
+def send_password_reset_email(user):
     """
-    Mock password reset email sender.
-    Prints the message instead of sending it.
+    Sends a password reset link to the user.
     """
-    base_url = current_app.config.get("FRONTEND_URLS", "http://localhost:5173").split(",")[0]
-    reset_link = f"{base_url}/reset-password?token={token}"
+    reset_link = f"https://reelbrief.com/reset-password/{user.reset_token}"
+    html_content = f"""
+    <h3>Password Reset Request</h3>
+    <p>Hello {user.name},</p>
+    <p>Click the link below to reset your password:</p>
+    <a href="{reset_link}">Reset Password</a>
+    <p>This link will expire in 30 minutes.</p>
+    """
+    return send_email(user.email, "Password Reset Instructions", html_content)
 
-    print("\n📧 [Mock Email] Password Reset Email")
-    print(f"To: {to_email}")
-    print(f"Subject: Reset your ReelBrief password")
-    print(f"Reset link: {reset_link}\n")
+
+def send_project_assignment_email(project, freelancer):
+    """
+    Notifies a freelancer about a new project assignment.
+    """
+    html_content = f"""
+    <h3>New Project Assignment</h3>
+    <p>Hello {freelancer.name},</p>
+    <p>You've been assigned to a new project: <b>{project.title}</b>.</p>
+    <p>Please log in to your dashboard to view more details.</p>
+    """
+    return send_email(freelancer.email, "New Project Assignment", html_content)
+
+
+def send_payment_notification(transaction):
+    """
+    Notifies a freelancer or client about payment updates.
+    """
+    recipient = transaction.user.email
+    html_content = f"""
+    <h3>Payment Notification</h3>
+    <p>Hello {transaction.user.name},</p>
+    <p>Your payment of <b>${transaction.amount}</b> has been successfully processed.</p>
+    <p>Transaction ID: {transaction.id}</p>
+    """
+    return send_email(recipient, "Payment Notification", html_content)

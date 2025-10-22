@@ -35,6 +35,18 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     ma.init_app(app)
     mail.init_app(app)
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": [
+                    "http://localhost:5173",  # Local development
+                    "https://reel-brief-frontend.vercel.app/",  # Production
+                    # ADD VERCEL PREVIEW URLS
+                ]
+            }
+        },
+    )
 
     # -------------------- Register Error Handlers --------------------
     register_jwt_error_handlers(jwt)

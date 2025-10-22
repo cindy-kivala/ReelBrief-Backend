@@ -1,3 +1,8 @@
+import os
+
+import sendgrid
+from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -9,3 +14,6 @@ migrate = Migrate()
 jwt = JWTManager()
 ma = Marshmallow()
 mail = Mail()
+
+
+sg = sendgrid.SendGridAPIClient(api_key=os.getenv("SENDGRID_API_KEY"))
