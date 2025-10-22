@@ -4,10 +4,13 @@ Owner: Monica
 Description: CRUD operations for projects + assignment logic
 """
 
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.models.project import Project
+from app.extensions import db
+project_bp = Blueprint('projects', __name__)
 
-project_bp = Blueprint("projects", __name__)
+@project_bp.route('/', methods=['GET'])
 
 # TODO: Monica - Implement project endpoints
 #
