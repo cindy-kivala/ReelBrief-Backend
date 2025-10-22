@@ -10,4 +10,4 @@ migrate = Migrate()
 jwt = JWTManager()
 
 
-sg = sendgrid.SendGridAPIClient(api_key=os.getenv('SENDGRID_API_KEY'))
+sg = sendgrid.SendGridAPIClient(api_key=os.getenv("SENDGRID_API_KEY"))

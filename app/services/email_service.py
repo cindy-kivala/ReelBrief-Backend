@@ -3,6 +3,7 @@ Email Service
 Owner: Caleb
 Description: Handles all email notifications and templating for system messages.
 """
+
 import os
 
 from extensions import sg
@@ -10,15 +11,13 @@ from sendgrid.helpers.mail import Mail
 
 FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "noreply@reelbrief.com")
 
+
 def send_email(recipient, subject, html_content):
     """
     Generic email sender using SendGrid.
     """
     message = Mail(
-        from_email=FROM_EMAIL,
-        to_emails=recipient,  
-        subject=subject,
-        html_content=html_content
+        from_email=FROM_EMAIL, to_emails=recipient, subject=subject, html_content=html_content
     )
 
     try:

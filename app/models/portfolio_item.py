@@ -36,12 +36,12 @@ from app.extensions import db
 
 class PortfolioItem(db.Model):
     __tablename__ = "portfolio_items"
-    id = db.Column(db.Integer, primary_key = True)
-    freelancer_id = db.Column(db.Integer,db.ForeignKey("freelancer.id"))
+    id = db.Column(db.Integer, primary_key=True)
+    freelancer_id = db.Column(db.Integer, db.ForeignKey("freelancer.id"))
     project_id = db.Column(db.Integer, db.ForeignKey("project.id"))
     title = db.Column(db.String)
     description = db.Column(db.String)
-    cover_image_url = db.Column(db.String ,nullable = True)
+    cover_image_url = db.Column(db.String, nullable=True)
     project_url = db.Column(db.String)
     tags = db.Column(ARRAY(db.String))
     display_order = db.Column(db.Integer)

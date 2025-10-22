@@ -35,18 +35,25 @@ from app.extensions import db
 # - average_rating() - calculates avg of sub-ratings
 #
 
+
 class Review(db.Model):
     __tablename__ = "reviews"
-    id = db.Column(db.Integer, primary_key = True)
-    project_id = db.Column(db.Integer,db.ForeignKey("project.id"))
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"))
     client_id = db.Column(db.Integer, db.ForeignKey("client.id"))
-    freelancer_id = db.Column(db.Integer,db.ForeignKey("freelancer.id"))
-    rating = db.Column(db.Integer,CheckConstraint("rating >= 1 AND rating <= 5"),nullable = False)
-    communication_rating = db.Column(db.Integer,CheckConstraint("communication_rating >= 1 AND communication_rating <= 5"))
-    quality_rating = db.Column(db.Integer,CheckConstraint("quality_rating >= 1 AND quality_rating <=5"))
-    timeliness_rating = db.Column(db.Integer,CheckConstraint("timeliness_rating >= 1 AND timeliness <= 5"))
+    freelancer_id = db.Column(db.Integer, db.ForeignKey("freelancer.id"))
+    rating = db.Column(db.Integer, CheckConstraint("rating >= 1 AND rating <= 5"), nullable=False)
+    communication_rating = db.Column(
+        db.Integer, CheckConstraint("communication_rating >= 1 AND communication_rating <= 5")
+    )
+    quality_rating = db.Column(
+        db.Integer, CheckConstraint("quality_rating >= 1 AND quality_rating <=5")
+    )
+    timeliness_rating = db.Column(
+        db.Integer, CheckConstraint("timeliness_rating >= 1 AND timeliness <= 5")
+    )
     review_text = db.Column(db.String)
-    is_public = db.Column(db.Boolean, default= True)
+    is_public = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, datetime.now())
 
     def __repr__(self):

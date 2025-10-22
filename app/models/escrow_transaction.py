@@ -33,22 +33,25 @@ from app.extensions import db
 
 
 class EscrowTransaction(db.Model):
-    __tablename__ = 'escrow_transactions'
-    id = db.Column(db.Integer, primary_key = True)
-    project_id = db.Column(db.Integer, )
-    client_id = db.Column(db.Integer, db.ForeignKey("client.id"), nullable = False)
-    freelancer_id = db.Column(db.Integer, db.relationship("freelancer.id"), nullable = False)
-    admin_id = db.Column(db.Integer, db.relationship("admin.id"), nullable = False)
+    __tablename__ = "escrow_transactions"
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(
+        db.Integer,
+    )
+    client_id = db.Column(db.Integer, db.ForeignKey("client.id"), nullable=False)
+    freelancer_id = db.Column(db.Integer, db.relationship("freelancer.id"), nullable=False)
+    admin_id = db.Column(db.Integer, db.relationship("admin.id"), nullable=False)
 
-    amount = db.Column(db.Integer) #set the default as USD
+    amount = db.Column(db.Integer)  # set the default as USD
     status = db.Column(db.String)
-    invoice_number = db.Column(db.Integer, unique = True)
+    invoice_number = db.Column(db.Integer, unique=True)
     invoice_url = db.Column(db.String)
 
     held_at = db.Column(db.String, datetime.now())
-    released_at = db.Column(db.String,datetime.now())
+    released_at = db.Column(db.String, datetime.now())
 
     def __repr__(self):
         return f"<EscrowTransaction {self.id}  {self.project_id} ${self.amount} {self.client_id} {self.freelancer_id}>"
+
 
 # Caleb before you merge anything make sure the first three From Ryan to me have merge to avoid breaks and conflicts
