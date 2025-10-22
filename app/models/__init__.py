@@ -10,11 +10,11 @@ import pkgutil
 from pathlib import Path
 
 # --- Explicit imports (required for Flask-Migrate) ---
-# from app.models.user import User
+from app.models.user import User
 # from app.models.freelancer_profile import FreelancerProfile
 # from app.models.skill import Skill, FreelancerSkill
 # from app.models.project import Project, ProjectSkill
-# from app.models.deliverable import Deliverable
+from app.models.deliverable import Deliverable
 # from app.models.feedback import Feedback
 # from app.models.escrow_transaction import EscrowTransaction
 # from app.models.portfolio_item import PortfolioItem
@@ -40,13 +40,13 @@ for _, module_name, is_pkg in pkgutil.iter_modules([str(package_path)]):
 
 # --- Collect model names for __all__ ---
 __all__ = [
-    # 'User',
+    'User',
     # 'FreelancerProfile',
     # 'Skill',
     # 'FreelancerSkill',
     # 'Project',
     # 'ProjectSkill',
-    # 'Deliverable',
+    'Deliverable',
     # 'Feedback',
     # 'EscrowTransaction',
     # 'PortfolioItem',
