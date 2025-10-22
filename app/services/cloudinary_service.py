@@ -6,24 +6,33 @@ Description: Manages file uploads, transformations, and deletions using Cloudina
 
 # TODO: Cindy - Implement Cloudinary Service
 import os
+import logging
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from werkzeug.utils import secure_filename
-from flask import current_app
+
+# Add logger at the top
+logger = logging.getLogger(__name__)
+
 
 class CloudinaryService:
     """Service for handling Cloudinary file operations"""
 
+    # Track if Cloudinary has been initialized
+    _initialized = False
+
     @staticmethod
     def init_cloudinary():
         """Initialize Cloudinary configuration"""
-        cloudinary.config(
-            cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
-            api_key=os.getenv('CLOUDINARY_API_KEY'),
-            api_secret=os.getenv('CLOUDINARY_API_SECRET'),
-            secure=True
-        )
+        if not CloudinaryService._initialized:
+            cloudinary.config(
+                cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
+                api_key=os.getenv('CLOUDINARY_API_KEY'),
+                api_secret=os.getenv('CLOUDINARY_API_SECRET'),
+                secure=True
+            )
+            CloudinaryService._initialized = True
 
 # Required functions:
 #
@@ -74,7 +83,7 @@ class CloudinaryService:
             }
         
         except Exception as e:
-            current_app.logger.error(f"Cloudinary upload failed: {str(e)}")
+            logger.error(f"Cloudinary upload failed: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)
@@ -111,12 +120,12 @@ class CloudinaryService:
             }
         
         except Exception as e:
-            current_app.logger.error(f"Cloudinary deletion failed: {str(e)}")
+            # CONFIRM: Use regular logger instead of current_app.logger
+            logger.error(f"Cloudinary deletion failed: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)
             }
-
 #
 # def generate_secure_url(public_id):
 #     """Return signed, secure URL for viewing file."""
@@ -144,7 +153,7 @@ class CloudinaryService:
             return url
         
         except Exception as e:
-            current_app.logger.error(f"URL generation failed: {str(e)}")
+            logger.error(f"URL generation failed: {str(e)}")
             return None
 #
 # def get_file_metadata(public_id):
@@ -182,11 +191,12 @@ class CloudinaryService:
             }
         
         except Exception as e:
-            current_app.logger.error(f"Metadata retrieval failed: {str(e)}")
+            logger.error(f"Metadata retrieval failed: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)
             }
+
 
     @staticmethod
     def _generate_thumbnail_url(upload_result):
@@ -236,15 +246,19 @@ class CloudinaryService:
             bool: True if file is allowed
         """
         if allowed_extensions is None:
+            # Add pptx to allowed extensions
             allowed_extensions = {
                 'png', 'jpg', 'jpeg', 'gif', 'webp',  # Images
                 'mp4', 'mov', 'avi', 'mkv',  # Videos
-                'pdf', 'doc', 'docx', 'txt'  # Documents
+                'pdf', 'doc', 'docx', 'txt', 'pptx'  # Documents (added pptx)
             }
         
-        return '.' in filename and \
-               filename.rsplit('.', 1)[1].lower() in allowed_extensions
-
+        if '.' not in filename:
+            return False
+            
+        extension = filename.rsplit('.', 1)[1].lower()
+        return extension in allowed_extensions
+    
     @staticmethod
     def get_file_type(filename):
         """
@@ -256,7 +270,10 @@ class CloudinaryService:
         Returns:
             str: File type ('image', 'video', 'document', 'unknown')
         """
-        extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        if '.' not in filename:
+            return 'unknown'
+
+        extension = filename.rsplit('.', 1)[1].lower()
         
         image_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'}
         video_extensions = {'mp4', 'mov', 'avi', 'mkv', 'webm'}
