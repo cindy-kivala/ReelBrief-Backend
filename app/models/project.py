@@ -23,8 +23,7 @@ class Project(db.Model):
     
     # Relationships
     deliverables = db.relationship('Deliverable', backref='project', lazy=True)
-    # feedback = db.relationship('Feedback', backref='project', lazy=True)
-
+    
     @property
     def all_feedback(self):
         feedback_list = []

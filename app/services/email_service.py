@@ -47,32 +47,35 @@ def send_password_reset_email(user):  # CONFIRM WITH RYAN IF ITS CLAS OROBJ user
     return send_email(user.email, "Password Reset Instructions", html_content)
 
 
-# def send_project_assignment_email(project, freelancer):
-#     """
-#     Notifies a freelancer about a new project assignment.
-#     """
-#     html_content = f"""
-#     <h3>New Project Assignment</h3>
-#     <p>Hello {freelancer.name},</p>
-#     <p>You've been assigned to a new project: <b>{project.title}</b>.</p>
-#     <p>Please log in to your dashboard to view more details.</p>
-#     """
-#     return send_email(freelancer.email, "New Project Assignment", html_content)
+def send_project_assignment_email(project, freelancer):
+    """
+    Notifies a freelancer about a new project assignment.
+    """
+    html_content = f"""
+    <h3>New Project Assignment</h3>
+    <p>Hello {freelancer.first_name} {freelancer.last_name},</p>
+    <p>You've been assigned to a new project: <b>{project.title}</b>.</p>
+    <p>Please log in to your dashboard to view more details.</p>
+    """
+    return send_email(freelancer.email, "New Project Assignment", html_content)
 
 
-# def send_payment_notification(transaction):
-#     """
-#     Notifies a freelancer or client about payment updates.
-#     """
-#     recipient = transaction.user.email
-#     html_content = f"""
-#     <h3>Payment Notification</h3>
-#     <p>Hello {transaction.user.name},</p>
-#     <p>Your payment of <b>${transaction.amount}</b> has been successfully processed.</p>
-#     <p>Transaction ID: {transaction.id}</p>
-#     """
-#     return send_email(recipient, "Payment Notification", html_content)
-
+def send_payment_notification(escrow_transaction, user):
+    """
+    Notifies a freelancer or client about payment updates.
+    """
+    # user = User.query.get(escrow_transaction.freelancer_id)
+    # if not user:
+    #     return False
+    
+    html_content = f"""
+    <h3>Payment Notification</h3>
+    <p>Hello {user.first_name} {user.last_name},</p>
+    <p>Your payment of <b>${escrow_transaction.amount}</b> has been successfully processed.</p>
+    <p>Transaction ID: {escrow_transaction.id}</p>
+    <p>Invoice Number: {escrow_transaction.invoice_number}</p>
+    """
+    return send_email(user.email, "Payment Notification", html_content)
 
 def send_verification_email(user_email, verification_token):
     """
@@ -117,28 +120,14 @@ def send_deliverable_approved_notification(user_email, deliverable_title, projec
     return send_email(user_email, "Deliverable Approved - ReelBrief", html_content)
 
 
-# def send_payment_notification(transaction):
-#     """
-#     Notifies a freelancer or client about payment updates.
-#     """
-#     recipient = transaction.user.email
-#     html_content = f"""
-#     <h3>Payment Notification</h3>
-#     <p>Hello {transaction.user.name},</p>
-#     <p>Your payment of <b>${transaction.amount}</b> has been successfully processed.</p>
-#     <p>Transaction ID: {transaction.id}</p>
-#     """
-#     return send_email(recipient, "Payment Notification", html_content)
-
-
-# def send_payment_released_notification(user_email, amount, project_name):
-#     """
-#     Notifies freelancer that payment has been released.
-#     """
-#     html_content = f"""
-#     <h3>Payment Released!</h3>
-#     <p>Hello,</p>
-#     <p>Good news! Payment of <b>${amount}</b> for project <b>{project_name}</b> has been released to your account.</p>
-#     <p>Please allow 3-5 business days for the funds to appear in your account.</p>
-#     """
-#     return send_email(user_email, "Payment Released - ReelBrief", html_content)
+def send_payment_released_notification(user_email, amount, project_name):
+    """
+    Notifies freelancer that payment has been released.
+    """
+    html_content = f"""
+    <h3>Payment Released!</h3>
+    <p>Hello,</p>
+    <p>Good news! Payment of <b>${amount}</b> for project <b>{project_name}</b> has been released to your account.</p>
+    <p>Please allow 3-5 business days for the funds to appear in your account.</p>
+    """
+    return send_email(user_email, "Payment Released - ReelBrief", html_content)
