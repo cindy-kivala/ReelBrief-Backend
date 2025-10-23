@@ -16,7 +16,7 @@ class Deliverable(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     # Foreign Keys
-    project_id = db.Column(db.Integer, nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
     # ADD db.ForeignKey('projects.id', ondelete='CASCADE') after Project merge
     uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)

@@ -10,6 +10,27 @@ from app.extensions import db
 
 # TODO: Monica - Implement Project and ProjectSkill models
 #
+class Project(db.Model):
+    __tablename__ = 'projects'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(50), default='active')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    deliverables = db.relationship('Deliverable', backref='project', lazy=True)
+    # feedback = db.relationship('Feedback', backref='project', lazy=True)
+
+    @property
+    def all_feedback(self):
+        feedback_list = []
+        for deliverable in self.deliverables:
+            feedback_list.extend(deliverable.feedback)
+        return feedback_list
 # Project Model:
 # - id (Primary Key)
 # - title, description
