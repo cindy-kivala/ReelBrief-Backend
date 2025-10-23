@@ -65,12 +65,14 @@ def create_app(config_class=Config):
     # from app.resources.project_resource import project_bp
     from app.resources.deliverable_resource import deliverable_bp
     from app.resources.escrow_resource import escrow_bp
+    from app.resources.feedback_resource import feedback_bp
     from app.resources.user_resource import user_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
     # app.register_blueprint(project_bp, url_prefix="/api/projects")
     app.register_blueprint(deliverable_bp, url_prefix="/api/deliverables")
+    app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
     app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
 
     # -------------------- Swagger Documentation --------------------
