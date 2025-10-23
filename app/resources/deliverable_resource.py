@@ -597,7 +597,7 @@ def get_deliverable_versions(deliverable_id):
 
 @deliverable_bp.route('/<int:deliverable_id>/approve', methods=['POST'])
 @jwt_required()
-@role_required(['client', 'admin'])
+@role_required('client', 'admin')
 def approve_deliverable(deliverable_id):
     """
     Approve a deliverable
@@ -647,7 +647,7 @@ def approve_deliverable(deliverable_id):
 # - Return: deliverable + feedback
 @deliverable_bp.route('/<int:deliverable_id>/request-revision', methods=['POST'])
 @jwt_required()
-@role_required(['client', 'admin'])
+@role_required('client', 'admin')
 def request_revision(deliverable_id):
     """
     Request revision on a deliverable
@@ -703,7 +703,7 @@ def request_revision(deliverable_id):
 
 @deliverable_bp.route('/<int:deliverable_id>/reject', methods=['POST'])
 @jwt_required()
-@role_required(['client', 'admin'])
+@role_required('client', 'admin')
 def reject_deliverable(deliverable_id):
     """
     Reject a deliverable
@@ -735,7 +735,7 @@ def reject_deliverable(deliverable_id):
         db.session.add(feedback)
         db.session.commit()
         
-        # TODO: Send notification to freelancer
+        # TODO [RBS-94]: Send notification to freelancer
         
         return jsonify({
             'success': True,
