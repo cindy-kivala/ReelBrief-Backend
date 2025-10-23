@@ -22,13 +22,16 @@ from app.services.email_service import send_password_reset_email, send_verificat
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
-@auth_bp.route('/')
+
+@auth_bp.route("/")
 def auth_home():
     return jsonify({"message": "Auth routes are working!"}), 200
 
-@auth_bp.route('/test')
+
+@auth_bp.route("/test")
 def test():
     return jsonify({"message": "Test route works!"}), 200
+
 
 # --------------------------------------------------------
 # POST /api/auth/register
@@ -96,17 +99,16 @@ def login():
     # JWT claims
     claims = {"role": user.role, "email": user.email}
     access_token = create_access_token(
-        identity=user.id,
-        additional_claims=claims,
-        expires_delta=timedelta(hours=3)
+        identity=user.id, additional_claims=claims, expires_delta=timedelta(hours=3)
     )
     refresh_token = create_refresh_token(identity=user.id)
 
-    return jsonify({
-        "user": user.to_dict(),
-        "access_token": access_token,
-        "refresh_token": refresh_token
-    }), 200
+    return (
+        jsonify(
+            {"user": user.to_dict(), "access_token": access_token, "refresh_token": refresh_token}
+        ),
+        200,
+    )
 
 
 # --------------------------------------------------------
@@ -117,9 +119,7 @@ def login():
 def refresh():
     """Issue new access token using refresh token"""
     current_user = get_jwt_identity()
-    new_access_token = create_access_token(
-        identity=current_user, expires_delta=timedelta(hours=3)
-    )
+    new_access_token = create_access_token(identity=current_user, expires_delta=timedelta(hours=3))
     return jsonify({"access_token": new_access_token}), 200
 
 
@@ -214,73 +214,81 @@ def temp_login():
     import psycopg2
     from flask_jwt_extended import create_access_token
     from werkzeug.security import check_password_hash
-    
+
     data = request.get_json()
     email = data.get("email")
     password = data.get("password")
-    
+
     if not email or not password:
         return jsonify({"error": "Email and password required"}), 400
-    
+
     try:
         # Get database connection
-        database_url = os.getenv('DATABASE_URL')
+        database_url = os.getenv("DATABASE_URL")
         if not database_url:
             return jsonify({"error": "Database configuration error"}), 500
-            
+
         conn = psycopg2.connect(database_url)
         cur = conn.cursor()
-        
+
         # Use raw SQL to avoid SQLAlchemy model issues
-        cur.execute("""
+        cur.execute(
+            """
             SELECT id, email, password_hash, role, first_name, last_name, is_verified 
             FROM users WHERE email = %s
-        """, (email,))
-        
+        """,
+            (email,),
+        )
+
         user_data = cur.fetchone()
-        
+
         if not user_data:
             cur.close()
             conn.close()
             return jsonify({"error": "Invalid credentials"}), 401
-        
+
         user_id, user_email, password_hash, role, first_name, last_name, is_verified = user_data
-        
+
         # Verify password
         if not check_password_hash(password_hash, password):
             cur.close()
             conn.close()
             return jsonify({"error": "Invalid credentials"}), 401
-        
+
         if not is_verified:
             cur.close()
             conn.close()
             return jsonify({"error": "Email not verified"}), 403
-        
+
         # Update last login
         cur.execute("UPDATE users SET last_login = NOW() WHERE id = %s", (user_id,))
         conn.commit()
-        
+
         # Create token
         access_token = create_access_token(
             identity=user_id,
             additional_claims={"role": role, "email": user_email},
-            expires_delta=timedelta(hours=3)
+            expires_delta=timedelta(hours=3),
         )
-        
+
         cur.close()
         conn.close()
-        
-        return jsonify({
-            "access_token": access_token,
-            "user": {
-                "id": user_id,
-                "email": user_email, 
-                "role": role,
-                "first_name": first_name,
-                "last_name": last_name
-            }
-        }), 200
-        
+
+        return (
+            jsonify(
+                {
+                    "access_token": access_token,
+                    "user": {
+                        "id": user_id,
+                        "email": user_email,
+                        "role": role,
+                        "first_name": first_name,
+                        "last_name": last_name,
+                    },
+                }
+            ),
+            200,
+        )
+
     except Exception as e:
         return jsonify({"error": f"Database error: {str(e)}"}), 500

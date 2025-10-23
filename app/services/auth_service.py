@@ -102,6 +102,7 @@ def refresh_access_token(refresh_token: str):
 
 revoked_tokens = set()
 
+
 def revoke_token(jti: str):
     """Revoke a JWT token (logout)."""
     revoked_tokens.add(jti)
@@ -112,7 +113,6 @@ def is_token_revoked(decoded_token):
     """Check if token is revoked."""
     jti = decoded_token["jti"]
     return jti in revoked_tokens
-
 
 
 # TODO: Ryan - Implement Auth Service

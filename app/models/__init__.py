@@ -26,17 +26,17 @@ from app.models.user import User
 
 # --- Collect model names for __all__ ---
 __all__ = [
-    'User',
-    'FreelancerProfile',
+    "User",
+    "FreelancerProfile",
     # 'Skill',
     # 'FreelancerSkill',
     # 'Project',
     # 'ProjectSkill',
-    'Deliverable',
-    'Feedback',
+    "Deliverable",
+    "Feedback",
     # 'EscrowTransaction',
     # 'PortfolioItem',
-    'Notification',
+    "Notification",
     # 'Review',
     # 'ActivityLog'
 ]

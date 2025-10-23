@@ -43,10 +43,10 @@ class User(db.Model):
     #     "FreelancerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
     # )
     freelancer_profile = db.relationship(
-    'FreelancerProfile', 
-    back_populates='user', 
-    uselist=False,
-    foreign_keys='FreelancerProfile.user_id'  
+        "FreelancerProfile",
+        back_populates="user",
+        uselist=False,
+        foreign_keys="FreelancerProfile.user_id",
     )
 
     notifications = db.relationship(

@@ -1,4 +1,3 @@
-
 """
 Email Service
 Owner: Ryan
@@ -33,7 +32,7 @@ def send_email(recipient, subject, html_content):
         return False
 
 
-def send_password_reset_email(user): #CONFIRM WITH RYAN IF ITS CLAS OROBJ user or user.email
+def send_password_reset_email(user):  # CONFIRM WITH RYAN IF ITS CLAS OROBJ user or user.email
     """
     Sends a password reset link to the user.
     """
@@ -89,6 +88,7 @@ def send_verification_email(user_email, verification_token):
     <p>This link will expire in 24 hours.</p>
     """
     return send_email(user_email, "Verify Your Email - ReelBrief", html_content)
+
 
 def send_deliverable_feedback_notification(user_email, deliverable_title, feedback_content):
     """

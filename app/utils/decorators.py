@@ -20,6 +20,7 @@ from flask_jwt_extended import get_jwt, verify_jwt_in_request
 # ROLE-BASED ACCESS CONTROL
 # ------------------------------------------------------
 
+
 def role_required(*roles):
     """
     Restrict route access to specific user roles.
@@ -28,6 +29,7 @@ def role_required(*roles):
         @role_required("admin")
         @role_required("client", "freelancer")
     """
+
     def wrapper(fn):
         @wraps(fn)
         def decorated_function(*args, **kwargs):
@@ -37,13 +39,20 @@ def role_required(*roles):
             user_role = claims.get("role")
 
             if user_role not in roles:
-                return jsonify({
-                    "error": "Access denied",
-                    "message": f"Requires role(s): {', '.join(roles)}"
-                }), 403
+                return (
+                    jsonify(
+                        {
+                            "error": "Access denied",
+                            "message": f"Requires role(s): {', '.join(roles)}",
+                        }
+                    ),
+                    403,
+                )
 
             return fn(*args, **kwargs)
+
         return decorated_function
+
     return wrapper
 
 
@@ -59,6 +68,7 @@ def admin_required(fn):
 # GLOBAL EXCEPTION HANDLER
 # ------------------------------------------------------
 
+
 def handle_exceptions(fn):
     """
     Decorator to catch unexpected exceptions and return a JSON response
@@ -69,18 +79,16 @@ def handle_exceptions(fn):
         def route():
             ...
     """
+
     @wraps(fn)
     def wrapper(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
         except Exception as e:
             traceback.print_exc()
-            return jsonify({
-                "error": "Server Error",
-                "message": str(e)
-            }), 500
-    return wrapper
+            return jsonify({"error": "Server Error", "message": str(e)}), 500
 
+    return wrapper
 
 
 # TODO: Ryan - Implement decorators
