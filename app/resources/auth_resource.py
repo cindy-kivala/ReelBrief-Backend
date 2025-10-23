@@ -4,20 +4,21 @@ Owner: Ryan
 Description: Handles user registration, login, refresh token, email verification, and password reset.
 """
 
-from flask import Blueprint, request, jsonify
+import secrets
+from datetime import datetime, timedelta
+
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
+    get_jwt_identity,
     jwt_required,
-    get_jwt_identity
 )
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
-import secrets
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
 from app.models import User
-from app.services.email_service import send_verification_email, send_password_reset_email
+from app.services.email_service import send_password_reset_email, send_verification_email
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
@@ -207,11 +208,12 @@ def reset_password():
 @auth_bp.post("/temp-login")
 def temp_login():
     """Temporary login using raw SQL to bypass broken models"""
-    import psycopg2
-    from werkzeug.security import check_password_hash
-    from flask_jwt_extended import create_access_token
-    from datetime import timedelta
     import os
+    from datetime import timedelta
+
+    import psycopg2
+    from flask_jwt_extended import create_access_token
+    from werkzeug.security import check_password_hash
     
     data = request.get_json()
     email = data.get("email")

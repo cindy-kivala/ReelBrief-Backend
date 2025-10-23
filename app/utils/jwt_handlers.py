@@ -6,6 +6,7 @@ Description: Custom handlers for JWT-related errors and edge cases.
 
 from flask import jsonify
 
+
 def register_jwt_error_handlers(jwt):
     """
     Registers custom error handlers for JWT issues like expired, invalid,

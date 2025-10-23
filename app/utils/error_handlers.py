@@ -6,6 +6,7 @@ Description: Unified error responses for common HTTP and server errors.
 
 from flask import jsonify
 
+
 def register_error_handlers(app):
     """Attach global error handlers to the Flask app."""
 

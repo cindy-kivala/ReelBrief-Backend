@@ -5,6 +5,7 @@ Description: Extended profile for freelancers with CV, skills, and availability 
 """
 
 from datetime import datetime
+
 from app.extensions import db
 
 

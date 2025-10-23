@@ -4,12 +4,14 @@ Owner: Cindy
 Description: Manages file uploads, transformations, and deletions using Cloudinary API.
 """
 
+import logging
+
 # TODO: Cindy - Implement Cloudinary Service
 import os
-import logging
+
 import cloudinary
-import cloudinary.uploader
 import cloudinary.api
+import cloudinary.uploader
 from werkzeug.utils import secure_filename
 
 # Add logger at the top

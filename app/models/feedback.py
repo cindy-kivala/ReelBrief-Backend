@@ -8,6 +8,7 @@ from datetime import datetime
 
 from app.extensions import db
 
+
 class Feedback(db.Model):
     __tablename__ = 'feedback'
 

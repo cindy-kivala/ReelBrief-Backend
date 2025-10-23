@@ -11,8 +11,10 @@ Description: Validate user registration, login, and JWT handling.
 """
 
 import json
-from app.models.user import User
+
 from app import db
+from app.models.user import User
+
 
 # ---------------------------------------------------------------------
 # Helpers

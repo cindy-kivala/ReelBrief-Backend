@@ -5,6 +5,7 @@ Description: Tracks notifications sent to users with email status.
 """
 
 from datetime import datetime
+
 from app.extensions import db
 
 

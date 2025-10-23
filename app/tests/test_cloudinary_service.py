@@ -5,9 +5,12 @@ Description: Unit tests for Cloudinary file operations
 """
 # Run this test as pytest app/tests/test_cloudinary_service.py -v
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from app.services.cloudinary_service import CloudinaryService
+
 
 class TestCloudinaryService:
     """Test suite for CloudinaryService"""

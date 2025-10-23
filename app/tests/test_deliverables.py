@@ -1,7 +1,9 @@
 # app/tests/test_deliverables_isolated.py
 import os
 import sys
-from sqlalchemy import create_engine, MetaData, Table, select
+
+from sqlalchemy import MetaData, Table, create_engine, select
+
 
 def test_tables_directly():
     """Test database tables directly without SQLAlchemy models"""
@@ -73,8 +75,9 @@ def test_tables_directly():
             print("No foreign key found from feedback to deliverables")
 def create_sample_data():
     """Create sample data for testing - complete version"""
-    import psycopg2
     from datetime import datetime
+
+    import psycopg2
     from dotenv import load_dotenv
     load_dotenv()
     
@@ -203,8 +206,9 @@ def verify_sample_data():
 # In your test_deliverables.py or create a new seed file
 def create_verified_users():
     """Create verified users with known passwords for testing"""
-    import psycopg2
     from datetime import datetime
+
+    import psycopg2
     from dotenv import load_dotenv
     from werkzeug.security import generate_password_hash
     load_dotenv()

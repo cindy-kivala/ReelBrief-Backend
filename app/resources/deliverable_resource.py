@@ -4,7 +4,7 @@ Owner: Cindy
 Description: Upload files, track versions, manage deliverable lifecycle
 """
 
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.utils import secure_filename
 
@@ -320,15 +320,15 @@ Owner: Cindy
 Description: Upload files, track versions, manage deliverable lifecycle
 """
 
-from flask import Blueprint, jsonify, request, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, current_app, jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.deliverable import Deliverable
 from app.models.user import User
 from app.services.cloudinary_service import CloudinaryService
-from app.utils.decorators import role_required 
+from app.utils.decorators import role_required
 
 deliverable_bp = Blueprint("deliverables", __name__, url_prefix='/api/deliverables')
 
