@@ -110,7 +110,7 @@ def get_deliverable(deliverable_id):
 # - Return: created deliverable
 @deliverable_bp.route('/', methods=['POST'])
 @jwt_required()
-# @role_required('freelancer')  # Uncomment when Ryan creates decorator
+@role_required('freelancer') 
 def create_deliverable():
     """
     Upload new deliverable with file
@@ -328,7 +328,7 @@ from app.extensions import db
 from app.models.deliverable import Deliverable
 from app.models.user import User
 from app.services.cloudinary_service import CloudinaryService
-# from app.utils.decorators import role_required  # Ryan will create this
+from app.utils.decorators import role_required 
 
 deliverable_bp = Blueprint("deliverables", __name__, url_prefix='/api/deliverables')
 
@@ -408,7 +408,7 @@ def get_deliverable(deliverable_id):
 
 @deliverable_bp.route('/', methods=['POST'])
 @jwt_required()
-# @role_required('freelancer')  # Uncomment when Ryan creates decorator
+@role_required('freelancer') 
 def create_deliverable():
     """
     Upload new deliverable with file
@@ -481,7 +481,7 @@ def create_deliverable():
         db.session.add(deliverable)
         db.session.commit()
         
-        # TODO: Send notification to client (when Caleb creates notification service)
+        # TODO: Send notification to clienT
         
         return jsonify({
             'success': True,
@@ -645,3 +645,155 @@ def approve_deliverable(deliverable_id):
 # - Create feedback record
 # - Send notification to freelancer
 # - Return: deliverable + feedback
+@deliverable_bp.route('/<int:deliverable_id>/request-revision', methods=['POST'])
+@jwt_required()
+@role_required(['client', 'admin'])
+def request_revision(deliverable_id):
+    """
+    Request revision on a deliverable
+    
+    JSON body:
+        - content: Feedback/revision request (required)
+        - priority: 'low', 'medium', 'high' (default: 'medium')
+        - deadline: Target deadline for revision
+    
+    Creates feedback record and updates deliverable status
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        
+        deliverable = Deliverable.query.get_or_404(deliverable_id)
+        
+        data = request.get_json()
+        
+        if not data or 'content' not in data:
+            return jsonify({'success': False, 'error': 'Feedback content is required'}), 400
+        
+        # Update deliverable status
+        deliverable.request_revision()
+        
+        # Create feedback record
+        from app.models.feedback import Feedback
+        
+        feedback = Feedback(
+            deliverable_id=deliverable_id,
+            user_id=current_user_id,
+            feedback_type='revision',
+            content=data['content'],
+            priority=data.get('priority', 'medium')
+        )
+        
+        db.session.add(feedback)
+        db.session.commit()
+        
+        # TODO: Send notification to freelancer REMBER TO DO THESE NOTIFICATIONS
+        
+        return jsonify({
+            'success': True,
+            'message': 'Revision requested successfully',
+            'deliverable': deliverable.to_dict(),
+            'feedback': feedback.to_dict()
+        }), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error requesting revision: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to request revision'}), 500
+    
+
+@deliverable_bp.route('/<int:deliverable_id>/reject', methods=['POST'])
+@jwt_required()
+@role_required(['client', 'admin'])
+def reject_deliverable(deliverable_id):
+    """
+    Reject a deliverable
+    
+    JSON body:
+        - reason: Reason for rejection (optional)
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        
+        deliverable = Deliverable.query.get_or_404(deliverable_id)
+        
+        data = request.get_json() or {}
+        
+        # Reject deliverable
+        deliverable.reject(reviewed_by_id=current_user_id)
+        
+        # Create feedback record with rejection reason
+        from app.models.feedback import Feedback
+        
+        feedback = Feedback(
+            deliverable_id=deliverable_id,
+            user_id=current_user_id,
+            feedback_type='revision',
+            content=data.get('reason', 'Deliverable rejected'),
+            priority='high'
+        )
+        
+        db.session.add(feedback)
+        db.session.commit()
+        
+        # TODO: Send notification to freelancer
+        
+        return jsonify({
+            'success': True,
+            'message': 'Deliverable rejected',
+            'deliverable': deliverable.to_dict()
+        }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error rejecting deliverable: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to reject deliverable'}), 500
+
+
+@deliverable_bp.route('/compare', methods=['POST'])
+@jwt_required()
+def compare_versions():
+    """
+    Compare two deliverable versions side-by-side
+    
+    JSON body:
+        - version1_id: First deliverable ID
+        - version2_id: Second deliverable ID
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'version1_id' not in data or 'version2_id' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Both version IDs are required'
+            }), 400
+        
+        version1 = Deliverable.query.get_or_404(data['version1_id'])
+        version2 = Deliverable.query.get_or_404(data['version2_id'])
+        
+        # Ensure they're from the same project
+        if version1.project_id != version2.project_id:
+            return jsonify({
+                'success': False,
+                'error': 'Versions must be from the same project'
+            }), 400
+        
+        comparison = {
+            'version1': version1.to_dict(include_feedback=True),
+            'version2': version2.to_dict(include_feedback=True),
+            'differences': {
+                'version_diff': version2.version_number - version1.version_number,
+                'time_diff_hours': (version2.uploaded_at - version1.uploaded_at).total_seconds() / 3600,
+                'size_diff_bytes': version2.file_size - version1.file_size if (version1.file_size and version2.file_size) else None,
+                'status_changed': version1.status != version2.status
+            }
+        }
+        
+        return jsonify({
+            'success': True,
+            'comparison': comparison
+        }), 200
+    
+    except Exception as e:
+        current_app.logger.error(f"Error comparing versions: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to compare versions'}), 500
