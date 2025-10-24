@@ -4,10 +4,28 @@ Owner: Cindy
 Description: Tracks file uploads with version control and Cloudinary integration
 """
 
+from app.extensions import db
 from datetime import datetime
 
-from app.extensions import db
+class Deliverable(db.Model):
+    __tablename__ = "deliverables"
 
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, nullable=True)
+    title = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text)
+    file_url = db.Column(db.String(255))
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "project_id": self.project_id,
+            "title": self.title,
+            "description": self.description,
+            "file_url": self.file_url,
+            "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
+        }
 # TODO: Cindy - Implement Deliverable model
 #
 # Required fields:

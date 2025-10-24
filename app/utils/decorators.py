@@ -10,75 +10,68 @@ Owner: Ryan
 Description: Contains custom Flask decorators for permissions, access control, and global exception handling.
 """
 
+"""
+Decorators Utility
+Owner: Ryan
+Description: Contains custom Flask decorators for permissions and access control.
+"""
+
 from functools import wraps
 from flask import jsonify
-from flask_jwt_extended import verify_jwt_in_request, get_jwt
+from flask_jwt_extended import get_jwt_identity
+from app.models.user import User
 import traceback
 
-# ------------------------------------------------------
-# ROLE-BASED ACCESS CONTROL
-# ------------------------------------------------------
 
-def role_required(*roles):
+# -------------------- ADMIN ONLY --------------------
+def admin_required(fn):
     """
-    Restrict route access to specific user roles.
-
-    Usage:
-        @role_required("admin")
-        @role_required("client", "freelancer")
+    Restrict route access to admin users.
     """
-    def wrapper(fn):
-        @wraps(fn)
-        def decorated_function(*args, **kwargs):
-            # Verify JWT token is present
-            verify_jwt_in_request()
-            claims = get_jwt()
-            user_role = claims.get("role")
-
-            if user_role not in roles:
-                return jsonify({
-                    "error": "Access denied",
-                    "message": f"Requires role(s): {', '.join(roles)}"
-                }), 403
-
-            return fn(*args, **kwargs)
-        return decorated_function
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user or user.role != "admin":
+            return jsonify({"error": "Admin access required"}), 403
+        return fn(*args, **kwargs)
     return wrapper
 
 
-def admin_required(fn):
+# -------------------- ROLE RESTRICTED --------------------
+def role_required(roles):
     """
-    Restrict route access to admin users only.
-    Shortcut for @role_required("admin").
+    Restrict route access to specific user roles.
+    Example usage:
+        @role_required(["admin", "client"])
     """
-    return role_required("admin")(fn)
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+            if not user or user.role not in roles:
+                return jsonify({"error": "Access denied for your role"}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
-# ------------------------------------------------------
-# GLOBAL EXCEPTION HANDLER
-# ------------------------------------------------------
-
+# -------------------- GLOBAL EXCEPTION HANDLER --------------------
 def handle_exceptions(fn):
     """
-    Decorator to catch unexpected exceptions and return a JSON response
-    instead of breaking the server.
-
-    Usage:
-        @handle_exceptions
-        def route():
-            ...
+    Global exception handling decorator for Flask routes.
+    Returns clean JSON error responses instead of crashing.
     """
     @wraps(fn)
     def wrapper(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
         except Exception as e:
-            traceback.print_exc()
-            return jsonify({
-                "error": "Server Error",
-                "message": str(e)
-            }), 500
+            print("❌ Exception in route:", traceback.format_exc())
+            return jsonify({"error": str(e)}), 500
     return wrapper
+
 
 
 
