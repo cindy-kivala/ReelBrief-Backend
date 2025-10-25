@@ -4,20 +4,21 @@ Owner: Ryan
 Description: Handles user registration, login, refresh token, email verification, and password reset.
 """
 
-from flask import Blueprint, request, jsonify
+import secrets
+from datetime import datetime, timedelta
+
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
+    get_jwt_identity,
     jwt_required,
-    get_jwt_identity
 )
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
-import secrets
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
 from app.models import User
-from app.services.email_service import send_verification_email, send_password_reset_email
+from app.services.email_service import send_password_reset_email, send_verification_email
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
@@ -88,17 +89,16 @@ def login():
     # JWT claims
     claims = {"role": user.role, "email": user.email}
     access_token = create_access_token(
-        identity=user.id,
-        additional_claims=claims,
-        expires_delta=timedelta(hours=3)
+        identity=user.id, additional_claims=claims, expires_delta=timedelta(hours=3)
     )
     refresh_token = create_refresh_token(identity=user.id)
 
-    return jsonify({
-        "user": user.to_dict(),
-        "access_token": access_token,
-        "refresh_token": refresh_token
-    }), 200
+    return (
+        jsonify(
+            {"user": user.to_dict(), "access_token": access_token, "refresh_token": refresh_token}
+        ),
+        200,
+    )
 
 
 # --------------------------------------------------------
@@ -109,9 +109,7 @@ def login():
 def refresh():
     """Issue new access token using refresh token"""
     current_user = get_jwt_identity()
-    new_access_token = create_access_token(
-        identity=current_user, expires_delta=timedelta(hours=3)
-    )
+    new_access_token = create_access_token(identity=current_user, expires_delta=timedelta(hours=3))
     return jsonify({"access_token": new_access_token}), 200
 
 

@@ -31,8 +31,9 @@ Replace with real Flask-Mail or SendGrid integration in production.
 
 import os
 
-from extensions import sg
 from sendgrid.helpers.mail import Mail
+
+from app.extensions import sg
 
 FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "noreply@reelbrief.com")
 

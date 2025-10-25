@@ -4,15 +4,17 @@ Owner: Ryan
 Description: Initializes the Flask app, extensions, blueprints, and error handlers.
 """
 
-from flask import Flask, jsonify
-from flask_cors import CORS
+import os
+
 from dotenv import load_dotenv
 from flasgger import Swagger
+from flask import Flask, jsonify
+from flask_cors import CORS
+
 from app.config import Config
-from app.extensions import db, migrate, jwt, ma, mail
-from app.utils.jwt_handlers import register_jwt_error_handlers
+from app.extensions import db, jwt, ma, mail, migrate
 from app.utils.error_handlers import register_error_handlers
-import os
+from app.utils.jwt_handlers import register_jwt_error_handlers
 
 
 def create_app(config_class=Config):
@@ -59,10 +61,10 @@ def create_app(config_class=Config):
 
     # -------------------- Register Blueprints --------------------
     from app.resources.auth_resource import auth_bp
-    from app.resources.user_resource import user_bp
-    from app.resources.project_resource import project_bp
     from app.resources.deliverable_resource import deliverable_bp
     from app.resources.escrow_resource import escrow_bp
+    from app.resources.project_resource import project_bp
+    from app.resources.user_resource import user_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
