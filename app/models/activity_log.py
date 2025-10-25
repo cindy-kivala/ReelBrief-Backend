@@ -1,7 +1,7 @@
 """
 Activity Log Model - Audit Trail
 Owner: Caleb
-Description: Tracks all important actions in the system for auditing
+Description: Tracks all important actions in the system for auditing.
 """
 
 from datetime import datetime
@@ -11,40 +11,36 @@ from sqlalchemy.dialects.postgresql import INET, JSONB
 from app.extensions import db
 
 
-# TODO: Caleb - Implement ActivityLog model
-#
-# Required fields:
-# - id (Primary Key)
-# - user_id (Foreign Key to users, nullable for system actions)
-# - action (String, e.g., 'project_created', 'deliverable_uploaded')
-# - resource_type (String, e.g., 'project', 'deliverable', 'user')
-# - resource_id (Integer, ID of the affected resource)
-# - details (JSONB, flexible metadata storage)
-# - ip_address (INET type for PostgreSQL)
-# - user_agent (Text)
-# - created_at
-#
-# Indexes:
-# - user_id for user activity queries
-# - (resource_type, resource_id) for resource history
-#
-# Relationships:
-# - activity_log belongs to user
-#
-# Methods:
-# - to_dict()
-#
 class ActivityLog(db.Model):
     __tablename__ = "activity_log"
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
-    action = db.Column(db.String)
-    resource_type = db.Column(db.String)
-    resource_id = db.Column(db.Integer)
-    details = db.Column(db.String, JSONB)
-    ip_address = db.Column(db.String, INET)
-    user_agent = db.Column(db.String)
-    created_at = db.Column(db.DateTime, datetime.now())
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    action = db.Column(db.String(100), nullable=False)
+    resource_type = db.Column(db.String(100), nullable=False)
+    resource_id = db.Column(db.Integer, nullable=True)
+    details = db.Column(JSONB, nullable=True)
+
+    ip_address = db.Column(INET, nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    user = db.relationship("User", backref=db.backref("activity_logs", lazy=True))
 
     def __repr__(self):
         return f"<ActivityLog {self.id} {self.action} {self.resource_type}>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "action": self.action,
+            "resource_type": self.resource_type,
+            "resource_id": self.resource_id,
+            "details": self.details,
+            "ip_address": str(self.ip_address) if self.ip_address else None,
+            "user_agent": self.user_agent,
+            "created_at": self.created_at.isoformat(),
+        }
