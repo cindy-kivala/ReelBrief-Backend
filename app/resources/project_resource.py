@@ -1,8 +1,8 @@
-"""
-Project Resource - Project Management Endpoints
-Owner: Monica
-Description: CRUD operations for projects + assignment logic
-"""
+# """
+# Project Resource - Project Management Endpoints
+# Owner: Monica
+# Description: CRUD operations for projects + assignment logic
+# """
 
 
 from flask import Blueprint, request, jsonify

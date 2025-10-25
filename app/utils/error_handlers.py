@@ -6,6 +6,7 @@ Description: Unified error responses for common HTTP and server errors.
 
 from flask import jsonify
 
+
 def register_error_handlers(app):
     """Attach global error handlers to the Flask app."""
 
@@ -23,7 +24,10 @@ def register_error_handlers(app):
 
     @app.errorhandler(404)
     def not_found(e):
-        return jsonify({"error": "Not Found", "message": "The requested resource was not found."}), 404
+        return (
+            jsonify({"error": "Not Found", "message": "The requested resource was not found."}),
+            404,
+        )
 
     @app.errorhandler(405)
     def method_not_allowed(e):
@@ -31,4 +35,7 @@ def register_error_handlers(app):
 
     @app.errorhandler(500)
     def internal_server_error(e):
-        return jsonify({"error": "Internal Server Error", "message": "An unexpected error occurred."}), 500
+        return (
+            jsonify({"error": "Internal Server Error", "message": "An unexpected error occurred."}),
+            500,
+        )
