@@ -11,6 +11,7 @@ from app.extensions import db
 # from app.models.project import Project, ProjectSkill
 from app.models.deliverable import Deliverable
 from app.models.feedback import Feedback
+from app.models.project import Project
 from app.models.freelancer_profile import FreelancerProfile
 
 # from app.models.escrow_transaction import EscrowTransaction
@@ -30,7 +31,7 @@ __all__ = [
     "FreelancerProfile",
     # 'Skill',
     # 'FreelancerSkill',
-    # 'Project',
+    'Project',
     # 'ProjectSkill',
     "Deliverable",
     "Feedback",
