@@ -24,7 +24,7 @@ class ProjectService:
                 description=data.get("description"),
                 budget=data.get("budget"),
                 deadline=datetime.strptime(data.get("deadline"), "%Y-%m-%d"),
-                sensitive=data.get("sensitive", False)
+                is_sensitive=data.get("is_sensitive", False)
             )
 
             # attach skills if provided
@@ -68,7 +68,7 @@ class ProjectService:
         if not freelancer.is_available:
             raise ValueError("Freelancer not available")
 
-        project.assigned_freelancer_id = freelancer.id
+        project.freelancer_id = freelancer.id
         project.status = "assigned"
         freelancer.is_available = False
 

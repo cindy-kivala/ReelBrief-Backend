@@ -7,8 +7,8 @@ from pathlib import Path
 
 from app.extensions import db
 
-# from app.models.skill import Skill, FreelancerSkill
-# from app.models.project import Project, ProjectSkill
+from app.models.skill import Skill, FreelancerSkill
+from app.models.project import Project, ProjectSkill
 from app.models.deliverable import Deliverable
 from app.models.feedback import Feedback
 from app.models.project import Project
@@ -29,10 +29,10 @@ from app.models.user import User
 __all__ = [
     "User",
     "FreelancerProfile",
-    # 'Skill',
-    # 'FreelancerSkill',
+    'Skill',
+    'FreelancerSkill',
     'Project',
-    # 'ProjectSkill',
+    'ProjectSkill',
     "Deliverable",
     "Feedback",
     # 'EscrowTransaction',

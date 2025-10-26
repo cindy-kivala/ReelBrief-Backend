@@ -5,7 +5,6 @@ Description: Tracks payment flow from client → escrow → freelancer.
 """
 
 from datetime import datetime
-
 from app.extensions import db
 
 
@@ -34,11 +33,11 @@ class EscrowTransaction(db.Model):
     refunded_at = db.Column(db.DateTime, nullable=True)
     notes = db.Column(db.Text, nullable=True)
 
-    project = db.relationship("Project", backref=db.backref("escrow_transaction", uselist=False))
-    client = db.relationship("User", foreign_keys=[client_id])
-    freelancer = db.relationship("User", foreign_keys=[freelancer_id])
-    admin = db.relationship("User", foreign_keys=[admin_id])
-
+    # Add backrefs:
+    client = db.relationship("User", foreign_keys=[client_id], backref="client_transactions")
+    freelancer = db.relationship("User", foreign_keys=[freelancer_id], backref="freelancer_transactions")
+    admin = db.relationship("User", foreign_keys=[admin_id], backref="admin_transactions")
+    
     def __repr__(self):
         return f"<EscrowTransaction {self.id} Project:{self.project_id} ${self.amount} Status:{self.status}>"
 
