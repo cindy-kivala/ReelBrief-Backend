@@ -190,3 +190,11 @@ def complete_project(project_id):
         print(f"Auto-creating portfolio item for project {project.title}")
 
     return jsonify({"message": "Project marked as completed"}), 200
+
+@project_bp.route("/api/projects/<int:project_id>/suggest-freelancers", methods=["GET"])
+@jwt_required()
+def suggest_freelancers(project_id):
+    project = Project.query.get_or_404(project_id)
+    matches = ProjectService.match_freelancers_to_project(project)
+    return jsonify({"matches": matches}), 200
+

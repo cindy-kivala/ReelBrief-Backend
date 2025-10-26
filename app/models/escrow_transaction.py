@@ -5,53 +5,39 @@ Description: Tracks payment flow from client → escrow → freelancer
 """
 
 from datetime import datetime
-
 from app.extensions import db
-
-# TODO: Caleb - Implement EscrowTransaction model
-#
-# Required fields:
-# - id (Primary Key)
-# - project_id (Foreign Key to projects, Unique - one transaction per project)
-# - client_id (Foreign Key to users)
-# - freelancer_id (Foreign Key to users)
-# - admin_id (Foreign Key to users)
-# - amount, currency (default USD)
-# - status (held, released, refunded, disputed)
-# - invoice_number (Unique)
-# - invoice_url
-# - payment_method
-# - held_at, released_at, refunded_at
-# - notes -ask Cindy about this
-#
-# Relationships:
-# - transaction belongs to project (one-to-one)
-# - transaction belongs to client, freelancer, admin (Users)
-#
-# Methods:
-# - to_dict()
 
 
 class EscrowTransaction(db.Model):
     __tablename__ = "escrow_transactions"
+
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(
-        db.Integer,
-    )
-    client_id = db.Column(db.Integer, db.ForeignKey("client.id"), nullable=False)
-    freelancer_id = db.Column(db.Integer, db.relationship("freelancer.id"), nullable=False)
-    admin_id = db.Column(db.Integer, db.relationship("admin.id"), nullable=False)
 
-    amount = db.Column(db.Integer)  # set the default as USD
-    status = db.Column(db.String)
-    invoice_number = db.Column(db.Integer, unique=True)
+    # Foreign Keys
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"), unique=True, nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    freelancer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    admin_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+
+    # Transaction details
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    currency = db.Column(db.String(10), default="USD")
+    status = db.Column(db.String(50), default="held")
+    invoice_number = db.Column(db.String(50), unique=True)
     invoice_url = db.Column(db.String)
+    payment_method = db.Column(db.String(50))
+    notes = db.Column(db.Text)
 
-    held_at = db.Column(db.String, datetime.now())
-    released_at = db.Column(db.String, datetime.now())
+    # Important timestamps
+    held_at = db.Column(db.DateTime, default=datetime.utcnow)
+    released_at = db.Column(db.DateTime)
+    refunded_at = db.Column(db.DateTime)
+
+    # Relationships
+    project = db.relationship("Project", backref=db.backref("escrow_transaction", uselist=False))
+    client = db.relationship("User", foreign_keys=[client_id], backref="client_transactions")
+    freelancer = db.relationship("User", foreign_keys=[freelancer_id], backref="freelancer_transactions")
+    admin = db.relationship("User", foreign_keys=[admin_id], backref="admin_transactions")
 
     def __repr__(self):
-        return f"<EscrowTransaction {self.id}  {self.project_id} ${self.amount} {self.client_id} {self.freelancer_id}>"
-
-
-# Caleb before you merge anything make sure the first three From Ryan to me have merge to avoid breaks and conflicts
+        return f"<EscrowTransaction {self.id} | ${self.amount} | {self.status}>"

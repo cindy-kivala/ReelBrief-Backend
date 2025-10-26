@@ -54,7 +54,8 @@ class Review(db.Model):
     )
     review_text = db.Column(db.String)
     is_public = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, datetime.now())
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
     def __repr__(self):
         return f"<Review {self.id} {self.freelancer_id} {self.rating} {self.review_text}"
