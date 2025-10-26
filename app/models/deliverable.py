@@ -50,7 +50,7 @@ class Deliverable(db.Model):
     # - deliverable has many feedback_items
     # - deliverable belongs to uploader (User)
     # - deliverable belongs to reviewer (User)
-    project = db.relationship('Project', back_populates='deliverables')
+    # project = db.relationship('Project', back_populates='deliverables')
     uploader = db.relationship("User", foreign_keys=[uploaded_by], backref="uploaded_deliverables")
     reviewer = db.relationship("User", foreign_keys=[reviewed_by], backref="reviewed_deliverables")
     feedback_items = db.relationship(
