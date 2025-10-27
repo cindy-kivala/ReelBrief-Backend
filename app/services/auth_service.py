@@ -4,12 +4,6 @@ Owner: Ryan
 Description: Handles authentication logic including registration, login, password hashing, and JWT management.
 """
 
-"""
-Auth Service
-Owner: Ryan
-Description: Handles authentication logic including registration, login, password hashing, and JWT management.
-"""
-
 import secrets
 from datetime import datetime, timedelta
 
