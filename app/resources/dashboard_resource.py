@@ -104,3 +104,59 @@ def get_activity():
         {"action": "Checked projects", "timestamp": "2025-10-23T09:05:00Z"},
     ]
     return jsonify({"recent_activity": activity_logs[:10]}), 200
+
+
+from sqlalchemy import extract
+
+
+@dashboard_bp.route("/revenue", methods=["GET"])
+@jwt_required()
+def get_revenue_data():
+    """Return monthly revenue statistics for admin chart display."""
+    claims = get_jwt()
+    role = claims.get("role")
+
+    if role != "admin":
+        return jsonify({"error": "Unauthorized access"}), 403
+
+    # Query total released escrow amount per month (current year)
+    current_year = db.func.extract("year", db.func.current_date())
+    monthly_revenue = (
+        db.session.query(
+            extract("month", EscrowTransaction.released_at).label("month"),
+            db.func.sum(EscrowTransaction.amount).label("total_revenue"),
+        )
+        .filter(
+            EscrowTransaction.status == "released",
+            extract("year", EscrowTransaction.released_at) == current_year,
+        )
+        .group_by(extract("month", EscrowTransaction.released_at))
+        .order_by("month")
+        .all()
+    )
+
+    # Map month numbers to short month names (1=Jan, 2=Feb, etc.)
+    month_names = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    ]
+
+    revenue_data = []
+    for i in range(1, 13):
+        month_total = next(
+            (float(row.total_revenue) for row in monthly_revenue if int(row.month) == i),
+            0.0,
+        )
+        revenue_data.append({"month": month_names[i - 1], "revenue": month_total})
+
+    return jsonify({"revenue": revenue_data}), 200
