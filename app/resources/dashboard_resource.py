@@ -6,6 +6,7 @@ Description: Provides summary data for freelancers, clients, and admins.
 
 from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
+from sqlalchemy import extract
 
 from app.extensions import db
 from app.models.escrow_transaction import EscrowTransaction
@@ -104,9 +105,6 @@ def get_activity():
         {"action": "Checked projects", "timestamp": "2025-10-23T09:05:00Z"},
     ]
     return jsonify({"recent_activity": activity_logs[:10]}), 200
-
-
-from sqlalchemy import extract
 
 
 @dashboard_bp.route("/revenue", methods=["GET"])
