@@ -1,12 +1,6 @@
 """
 Decorators Utility
 Owner: Ryan
-Description: Contains custom Flask decorators for permissions and access control.
-"""
-
-"""
-Decorators Utility
-Owner: Ryan
 Description: Contains custom Flask decorators for permissions, access control, and global exception handling.
 """
 
@@ -16,11 +10,10 @@ from functools import wraps
 from flask import jsonify
 from flask_jwt_extended import get_jwt, verify_jwt_in_request
 
+
 # ------------------------------------------------------
 # ROLE-BASED ACCESS CONTROL
 # ------------------------------------------------------
-
-
 def role_required(*roles):
     """
     Restrict route access to specific user roles.
@@ -33,7 +26,6 @@ def role_required(*roles):
     def wrapper(fn):
         @wraps(fn)
         def decorated_function(*args, **kwargs):
-            # Verify JWT token is present
             verify_jwt_in_request()
             claims = get_jwt()
             user_role = claims.get("role")
@@ -48,7 +40,6 @@ def role_required(*roles):
                     ),
                     403,
                 )
-
             return fn(*args, **kwargs)
 
         return decorated_function
@@ -57,27 +48,16 @@ def role_required(*roles):
 
 
 def admin_required(fn):
-    """
-    Restrict route access to admin users only.
-    Shortcut for @role_required("admin").
-    """
+    """Restrict route access to admin users only."""
     return role_required("admin")(fn)
 
 
 # ------------------------------------------------------
 # GLOBAL EXCEPTION HANDLER
 # ------------------------------------------------------
-
-
 def handle_exceptions(fn):
     """
-    Decorator to catch unexpected exceptions and return a JSON response
-    instead of breaking the server.
-
-    Usage:
-        @handle_exceptions
-        def route():
-            ...
+    Decorator to catch unexpected exceptions and return a JSON response.
     """
 
     @wraps(fn)
@@ -89,17 +69,3 @@ def handle_exceptions(fn):
             return jsonify({"error": "Server Error", "message": str(e)}), 500
 
     return wrapper
-
-
-# TODO: Ryan - Implement decorators
-#
-# Required functions:
-#
-# def admin_required(fn):
-#     """Restrict route access to admin users."""
-#
-# def role_required(roles):
-#     """Restrict route to specific user roles."""
-#
-# def handle_exceptions(fn):
-#     """Global exception handling decorator."""

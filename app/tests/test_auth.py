@@ -4,17 +4,6 @@ Owner: Ryan
 Description: Validate user registration, login, and JWT handling.
 """
 
-"""
-Auth Tests
-Owner: Ryan
-Description: Validate user registration, login, and JWT handling.
-"""
-
-import json
-
-from app import db
-from app.models.user import User
-
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -88,11 +77,3 @@ def test_logout_revokes_token(client):
     # access protected route again should fail
     res2 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert res2.status_code == 401
-
-
-# TODO: Ryan - Implement Auth Tests
-#
-# def test_register_user_success(client): ...
-# def test_login_with_invalid_password(client): ...
-# def test_refresh_token(client): ...
-# def test_logout_revokes_token(client): ...

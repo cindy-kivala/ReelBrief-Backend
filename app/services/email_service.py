@@ -39,18 +39,17 @@ def send_email(recipient, subject, html_content, from_name=FROM_NAME):
 def send_password_reset_email(user):
     """Send password reset link."""
     reset_link = f"{BASE_URL}/reset-password/{user.reset_token}"
-    html_content = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h3 style="color: #2c3e50;">Password Reset</h3>
-        <p>Hello <strong>{user.name}</strong>,</p>
-        <p>Click below to reset your password:</p>
-        <a href="{reset_link}" 
-           style="background:#3498db; color:white; padding:12px 24px; text-decoration:none; border-radius:5px; display:inline-block;">
-           Reset Password
-        </a>
-        <p><small>Link expires in <strong>30 minutes</strong>.</small></p>
-    </div>
-    """
+    html_content = (
+        f"<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>"
+        "<h3 style='color: #2c3e50;'>Password Reset</h3>"
+        f"<p>Hello <strong>{user.name}</strong>,</p>"
+        "<p>Click below to reset your password:</p>"
+        f"<a href='{reset_link}' style='background:#3498db; color:white; padding:12px 24px; "
+        "text-decoration:none; border-radius:5px; display:inline-block;'>"
+        "Reset Password</a>"
+        "<p><small>Link expires in <strong>30 minutes</strong>.</small></p>"
+        "</div>"
+    )
     return send_email(user.email, "Reset Your ReelBrief Password", html_content)
 
 

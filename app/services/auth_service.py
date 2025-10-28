@@ -4,16 +4,7 @@ Owner: Ryan
 Description: Handles authentication logic including registration, login, password hashing, and JWT management.
 """
 
-"""
-Auth Service
-Owner: Ryan
-Description: Handles authentication logic including registration, login, password hashing, and JWT management.
-"""
-
-import secrets
-from datetime import datetime, timedelta
-
-from flask_jwt_extended import create_access_token, create_refresh_token, decode_token, get_jti
+from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
@@ -54,7 +45,6 @@ def register_user(data: dict):
     db.session.add(user)
     db.session.commit()
 
-    # Optional: send verification email
     send_verification_email(email, user.id)
 
     return {"message": "User registered successfully", "user": user.to_dict()}, 201
@@ -68,7 +58,7 @@ def login_user(email: str, password: str):
 
     claims = {"role": user.role, "email": user.email}
     access_token = create_access_token(
-        identity=user.id, additional_claims=claims, expires_delta=timedelta(minutes=30)
+        identity=user.id, additional_claims=claims, expires_delta=False
     )
     refresh_token = create_refresh_token(identity=user.id)
 
@@ -93,7 +83,7 @@ def refresh_access_token(refresh_token: str):
 
         claims = {"role": user.role, "email": user.email}
         new_access = create_access_token(
-            identity=user_id, additional_claims=claims, expires_delta=timedelta(minutes=30)
+            identity=user_id, additional_claims=claims, expires_delta=False
         )
         return {"access_token": new_access}, 200
     except Exception as e:
@@ -113,23 +103,3 @@ def is_token_revoked(decoded_token):
     """Check if token is revoked."""
     jti = decoded_token["jti"]
     return jti in revoked_tokens
-
-
-# TODO: Ryan - Implement Auth Service
-#
-# Required functions:
-#
-# def register_user(data):
-#     """Register a new user."""
-#
-# def login_user(email, password):
-#     """Authenticate and return access tokens."""
-#
-# def verify_password(plain_password, hashed_password):
-#     """Check password validity."""
-#
-# def refresh_access_token(refresh_token):
-#     """Generate a new access token."""
-#
-# def revoke_token(jti):
-#     """Revoke a JWT token (logout)."""
