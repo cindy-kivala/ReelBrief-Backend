@@ -17,19 +17,32 @@ FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "noreply@reelbrief.com")
 
 def send_email(recipient, subject, html_content):
     """
-    Generic email sender using SendGrid.
+    Production-ready email with environment detection.
     """
-    message = Mail(
-        from_email=FROM_EMAIL, to_emails=recipient, subject=subject, html_content=html_content
-    )
+    is_production = os.getenv('FLASK_ENV') == 'production'
+    
+    if is_production and os.getenv('SENDGRID_API_KEY'):
+        # PRODUCTION: Real emails
+        message = Mail(
+            from_email=FROM_EMAIL, 
+            to_emails=recipient, 
+            subject=subject, 
+            html_content=html_content
+        )
+        try:
+            response = sg.send(message)
+            success = response.status_code in [200, 202]
+            status = "sent" if success else f"failed ({response.status_code})"
+            print(f"[PROD] Email {status} to {recipient}")
+            return success
+        except Exception as e:
+            print(f"[PROD] Email failed to {recipient}: {e}")
+            return False
+    else:
+        # DEVELOPMENT: Log only
+        print(f"[DEV] Would send to: {recipient} | Subject: {subject}")
+        return True  # Always succeed in development
 
-    try:
-        response = sg.send(message)
-        print(f"Email sent to {recipient}, status: {response.status_code}")
-        return True
-    except Exception as e:
-        print(f"Error sending email to {recipient}: {e}")
-        return False
 
 
 def send_password_reset_email(user):  # CONFIRM WITH RYAN IF ITS CLAS OROBJ user or user.email
