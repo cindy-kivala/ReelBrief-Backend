@@ -1,0 +1,9 @@
+{
+  "name": "Test Config",
+  "version": "1.1",
+  "settings": {
+    "theme": "dark",
+    "language": "en"
+  },
+  "comments": "This config file has been updated with proper formatting and comments as requested"
+}

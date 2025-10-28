@@ -31,7 +31,7 @@ class FreelancerProfile(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # -------------------- Relationships --------------------
-    user = db.relationship("User", back_populates="freelancer_profile")
+    user = db.relationship("User", back_populates="freelancer_profile", foreign_keys=[user_id])
 
     # -------------------- Methods --------------------
     def to_dict(self):

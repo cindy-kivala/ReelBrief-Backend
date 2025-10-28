@@ -10,10 +10,11 @@ from functools import wraps
 from flask import jsonify
 from flask_jwt_extended import get_jwt, verify_jwt_in_request
 
-
 # ------------------------------------------------------
 # ROLE-BASED ACCESS CONTROL
 # ------------------------------------------------------
+
+
 def role_required(*roles):
     """
     Restrict route access to specific user roles.
@@ -55,6 +56,8 @@ def admin_required(fn):
 # ------------------------------------------------------
 # GLOBAL EXCEPTION HANDLER
 # ------------------------------------------------------
+
+
 def handle_exceptions(fn):
     """
     Decorator to catch unexpected exceptions and return a JSON response.
@@ -69,3 +72,17 @@ def handle_exceptions(fn):
             return jsonify({"error": "Server Error", "message": str(e)}), 500
 
     return wrapper
+
+
+# TODO: Ryan - Implement decorators
+#
+# Required functions:
+#
+# def admin_required(fn):
+#     """Restrict route access to admin users."""
+#
+# def role_required(roles):
+#     """Restrict route to specific user roles."""
+#
+# def handle_exceptions(fn):
+#     """Global exception handling decorator."""

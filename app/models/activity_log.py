@@ -15,19 +15,15 @@ class ActivityLog(db.Model):
     __tablename__ = "activity_log"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-
-    action = db.Column(db.String(100), nullable=False)
-    resource_type = db.Column(db.String(100), nullable=False)
-    resource_id = db.Column(db.Integer, nullable=True)
-    details = db.Column(JSONB, nullable=True)
-
-    ip_address = db.Column(INET, nullable=True)
-    user_agent = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # Relationship
-    user = db.relationship("User", backref=db.backref("activity_logs", lazy=True))
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    action = db.Column(db.String)
+    resource_type = db.Column(db.String)
+    resource_id = db.Column(db.Integer)
+    details = db.Column(JSONB)
+    ip_address = db.Column(INET)
+    user_agent = db.Column(db.String)
+    # created_at = db.Column(db.DateTime, datetime.now())
+    created_at = db.Column(db.DateTime, default=db.func.now())
 
     def __repr__(self):
         return f"<ActivityLog {self.id} {self.action} {self.resource_type}>"

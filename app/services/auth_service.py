@@ -4,7 +4,16 @@ Owner: Ryan
 Description: Handles authentication logic including registration, login, password hashing, and JWT management.
 """
 
-from flask_jwt_extended import create_access_token, create_refresh_token, decode_token
+"""
+Auth Service
+Owner: Ryan
+Description: Handles authentication logic including registration, login, password hashing, and JWT management.
+"""
+
+import secrets
+from datetime import datetime, timedelta
+
+from flask_jwt_extended import create_access_token, create_refresh_token, decode_token, get_jti
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
@@ -103,3 +112,23 @@ def is_token_revoked(decoded_token):
     """Check if token is revoked."""
     jti = decoded_token["jti"]
     return jti in revoked_tokens
+
+
+# TODO: Ryan - Implement Auth Service
+#
+# Required functions:
+#
+# def register_user(data):
+#     """Register a new user."""
+#
+# def login_user(email, password):
+#     """Authenticate and return access tokens."""
+#
+# def verify_password(plain_password, hashed_password):
+#     """Check password validity."""
+#
+# def refresh_access_token(refresh_token):
+#     """Generate a new access token."""
+#
+# def revoke_token(jti):
+#     """Revoke a JWT token (logout)."""
