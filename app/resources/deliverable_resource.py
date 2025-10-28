@@ -3,21 +3,23 @@ Deliverable Resource - File Upload & Version Control
 Owner: Cindy
 Description: Upload files, track versions, manage deliverable lifecycle
 """
+
 import os
 from datetime import datetime
+
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.deliverable import Deliverable
-from app.models.user import User
 from app.models.project import Project
+from app.models.user import User
 from app.services.cloudinary_service import CloudinaryService
 from app.services.email_service import (
-    send_email,
     send_deliverable_approved_notification,
-    send_deliverable_feedback_notification
+    send_deliverable_feedback_notification,
+    send_email,
 )
 from app.utils.decorators import role_required
 
@@ -159,18 +161,17 @@ def create_deliverable():
 
         if not project_id:
             return jsonify({"success": False, "error": "Project ID is required"}), 400
-        
+
         # VERIFY CLOUDINARY CREDENTIALS
-        if not all([
-            os.getenv("CLOUDINARY_CLOUD_NAME"),
-            os.getenv("CLOUDINARY_API_KEY"),
-            os.getenv("CLOUDINARY_API_SECRET")
-        ]):
+        if not all(
+            [
+                os.getenv("CLOUDINARY_CLOUD_NAME"),
+                os.getenv("CLOUDINARY_API_KEY"),
+                os.getenv("CLOUDINARY_API_SECRET"),
+            ]
+        ):
             current_app.logger.error("Cloudinary credentials missing!")
-            return jsonify({
-                "success": False, 
-                "error": "File upload service not configured"
-            }), 500
+            return jsonify({"success": False, "error": "File upload service not configured"}), 500
 
         # Validate file type
         if not CloudinaryService.allowed_file(file.filename):
@@ -225,9 +226,9 @@ def create_deliverable():
             if project and project.client_id:
                 client = User.query.get(project.client_id)
                 freelancer = User.query.get(current_user_id)
-                
+
                 if client and client.email:
-                    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+                    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
                     send_email(
                         recipient=client.email,
                         subject=f"New Deliverable: {deliverable.title}",
@@ -254,13 +255,12 @@ def create_deliverable():
                                 This is an automated notification from ReelBrief.
                             </p>
                         </div>
-                        """
+                        """,
                     )
                     current_app.logger.info(f"Notification sent to client: {client.email}")
         except Exception as email_error:
             # Don't fail the upload if email fails
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
-
 
         return (
             jsonify(
@@ -435,9 +435,7 @@ def approve_deliverable(deliverable_id):
             freelancer = User.query.get(deliverable.uploaded_by)
             if freelancer and freelancer.email:
                 send_deliverable_approved_notification(
-                    freelancer.email,
-                    deliverable.title,
-                    project.title
+                    freelancer.email, deliverable.title, project.title
                 )
                 current_app.logger.info(f"Approval notification sent to: {freelancer.email}")
         except Exception as email_error:
@@ -445,47 +443,51 @@ def approve_deliverable(deliverable_id):
 
         # AUTO-GENERATE PORTFOLIO ITEM (if project completed and not sensitive)
         try:
-            if project.status == 'completed' and not project.is_sensitive:
+            if project.status == "completed" and not project.is_sensitive:
                 from app.models.portfolio_item import PortfolioItem
-                
+
                 # Check if portfolio item already exists
-                existing_portfolio = PortfolioItem.query.filter_by(
-                    project_id=project.id
-                ).first()
-                
+                existing_portfolio = PortfolioItem.query.filter_by(project_id=project.id).first()
+
                 if not existing_portfolio:
                     # Get all approved deliverables for cover image
-                    approved_deliverables = Deliverable.query.filter_by(
-                        project_id=project.id,
-                        status='approved'
-                    ).order_by(Deliverable.version_number.desc()).all()
-                    
+                    approved_deliverables = (
+                        Deliverable.query.filter_by(project_id=project.id, status="approved")
+                        .order_by(Deliverable.version_number.desc())
+                        .all()
+                    )
+
                     # Use latest approved deliverable as cover
-                    cover_deliverable = approved_deliverables[0] if approved_deliverables else deliverable
-                    
+                    cover_deliverable = (
+                        approved_deliverables[0] if approved_deliverables else deliverable
+                    )
+
                     # Extract tags from project skills
                     tags = []
-                    if hasattr(project, 'required_skills'):
+                    if hasattr(project, "required_skills"):
                         tags = [skill.skill.name for skill in project.required_skills[:5]]
-                    
+
                     portfolio_item = PortfolioItem(
                         freelancer_id=deliverable.uploaded_by,
                         project_id=project.id,
                         title=project.title,
                         description=project.description,
-                        cover_image_url=cover_deliverable.thumbnail_url or cover_deliverable.file_url,
+                        cover_image_url=cover_deliverable.thumbnail_url
+                        or cover_deliverable.file_url,
                         tags=tags,
                         is_visible=True,
                         is_featured=False,
-                        display_order=0
+                        display_order=0,
                     )
-                    
+
                     db.session.add(portfolio_item)
                     db.session.commit()
-                    
+
                     current_app.logger.info(f"Portfolio item auto-created for project {project.id}")
                 else:
-                    current_app.logger.info(f"Portfolio item already exists for project {project.id}")
+                    current_app.logger.info(
+                        f"Portfolio item already exists for project {project.id}"
+                    )
         except Exception as portfolio_error:
             # Don't fail approval if portfolio generation fails
             current_app.logger.error(f"Portfolio auto-generation failed: {str(portfolio_error)}")
@@ -493,33 +495,30 @@ def approve_deliverable(deliverable_id):
         # TRIGGER ESCROW PAYMENT RELEASE (if escrow exists)
         try:
             from app.models.escrow_transaction import EscrowTransaction
-            
-            escrow = EscrowTransaction.query.filter_by(
-                project_id=project.id,
-                status='held'
-            ).first()
-            
+
+            escrow = EscrowTransaction.query.filter_by(project_id=project.id, status="held").first()
+
             if escrow:
-                escrow.status = 'released'
+                escrow.status = "released"
                 escrow.released_at = datetime.utcnow()
                 db.session.commit()
-                
+
                 # Send payment notification
                 try:
                     freelancer = User.query.get(deliverable.uploaded_by)
                     if freelancer and freelancer.email:
                         from app.services.email_service import send_payment_released_notification
+
                         send_payment_released_notification(
-                            freelancer.email,
-                            float(escrow.amount),
-                            project.title
+                            freelancer.email, float(escrow.amount), project.title
                         )
                         current_app.logger.info(f"Payment released: ${escrow.amount}")
                 except Exception as payment_email_error:
-                    current_app.logger.error(f"Payment notification failed: {str(payment_email_error)}")
+                    current_app.logger.error(
+                        f"Payment notification failed: {str(payment_email_error)}"
+                    )
         except Exception as escrow_error:
             current_app.logger.error(f"Escrow release failed: {str(escrow_error)}")
-
 
         return (
             jsonify(
@@ -591,17 +590,14 @@ def request_revision(deliverable_id):
         try:
             freelancer = User.query.get(deliverable.uploaded_by)
             client = User.query.get(current_user_id)
-            
+
             if freelancer and freelancer.email:
                 send_deliverable_feedback_notification(
-                    freelancer.email,
-                    deliverable.title,
-                    data["content"]
+                    freelancer.email, deliverable.title, data["content"]
                 )
                 current_app.logger.info(f"Revision notification sent to: {freelancer.email}")
         except Exception as email_error:
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
-
 
         return (
             jsonify(
@@ -659,17 +655,16 @@ def reject_deliverable(deliverable_id):
         # SEND EMAIL NOTIFICATION TO FREELANCER
         try:
             freelancer = User.query.get(deliverable.uploaded_by)
-            
+
             if freelancer and freelancer.email:
                 send_deliverable_feedback_notification(
                     freelancer.email,
                     deliverable.title,
-                    f"REJECTED: {data.get('reason', 'Deliverable rejected')}"
+                    f"REJECTED: {data.get('reason', 'Deliverable rejected')}",
                 )
                 current_app.logger.info(f"Rejection notification sent to: {freelancer.email}")
         except Exception as email_error:
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
-
 
         return (
             jsonify(
@@ -721,9 +716,11 @@ def compare_versions():
                 "version_diff": version2.version_number - version1.version_number,
                 "time_diff_hours": (version2.uploaded_at - version1.uploaded_at).total_seconds()
                 / 3600,
-                "size_diff_bytes": version2.file_size - version1.file_size
-                if (version1.file_size and version2.file_size)
-                else None,
+                "size_diff_bytes": (
+                    version2.file_size - version1.file_size
+                    if (version1.file_size and version2.file_size)
+                    else None
+                ),
                 "status_changed": version1.status != version2.status,
             },
         }

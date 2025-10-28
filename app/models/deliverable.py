@@ -16,7 +16,9 @@ class Deliverable(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     # Foreign Keys
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
+    project_id = db.Column(
+        db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
     # ADD db.ForeignKey('projects.id', ondelete='CASCADE') after Project merge
     uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
@@ -50,7 +52,7 @@ class Deliverable(db.Model):
     # - deliverable has many feedback_items
     # - deliverable belongs to uploader (User)
     # - deliverable belongs to reviewer (User)
-    project = db.relationship('Project', back_populates='deliverables')
+    project = db.relationship("Project", back_populates="deliverables")
     uploader = db.relationship("User", foreign_keys=[uploaded_by], backref="uploaded_deliverables")
     reviewer = db.relationship("User", foreign_keys=[reviewed_by], backref="reviewed_deliverables")
     feedback_items = db.relationship(
@@ -86,21 +88,25 @@ class Deliverable(db.Model):
             "uploaded_at": self.uploaded_at.isoformat() if self.uploaded_at else None,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
             "reviewed_by": self.reviewed_by,
-            "uploader": {
-                "id": self.uploader.id,
-                "first_name": self.uploader.first_name,
-                "last_name": self.uploader.last_name,
-                "email": self.uploader.email,
-            }
-            if self.uploader
-            else None,
-            "reviewer": {
-                "id": self.reviewer.id,
-                "first_name": self.reviewer.first_name,
-                "last_name": self.reviewer.last_name,
-            }
-            if self.reviewer
-            else None,
+            "uploader": (
+                {
+                    "id": self.uploader.id,
+                    "first_name": self.uploader.first_name,
+                    "last_name": self.uploader.last_name,
+                    "email": self.uploader.email,
+                }
+                if self.uploader
+                else None
+            ),
+            "reviewer": (
+                {
+                    "id": self.reviewer.id,
+                    "first_name": self.reviewer.first_name,
+                    "last_name": self.reviewer.last_name,
+                }
+                if self.reviewer
+                else None
+            ),
         }
 
         # ADD AFTER FEEDBACK IS READY

@@ -14,32 +14,35 @@ Minimal Project Model for Testing
 This is a temporary stub until the full Project model is merged
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 
 class Project(db.Model):
-    __tablename__ = 'projects'
-    
+    __tablename__ = "projects"
+
     # Primary Key
     id = db.Column(db.Integer, primary_key=True)
-    
+
     # Basic fields
-    title = db.Column(db.String(255), nullable=False, default='Test Project')
+    title = db.Column(db.String(255), nullable=False, default="Test Project")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # Relationship to deliverables (back_populates must match Deliverable.project)
-    deliverables = db.relationship('Deliverable', back_populates='project', lazy=True)
-    
+    deliverables = db.relationship("Deliverable", back_populates="project", lazy=True)
+
     def __repr__(self):
         return f"<Project {self.id}: {self.title}>"
-    
+
     def to_dict(self):
         return {
-            'id': self.id,
-            'title': self.title,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            "id": self.id,
+            "title": self.title,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
 # Project Model:
 # - id (Primary Key)
 # - title, description
