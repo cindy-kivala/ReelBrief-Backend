@@ -5,12 +5,11 @@ Description: Sends templated emails via SendGrid using app.extensions.sg
 """
 
 import os
-from itsdangerous import URLSafeTimedSerializer
 
+from itsdangerous import URLSafeTimedSerializer
 from sendgrid.helpers.mail import From, Mail
 
 from app.extensions import sg
-
 
 FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "michenicaleb@gmail.com")
 FROM_NAME = os.getenv("SENDGRID_FROM_NAME", "ReelBrief Notifications")
@@ -21,7 +20,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 def create_verification_token(user_id: int, expiration: int = 3600) -> str:
     """Create a timed verification token."""
     serializer = URLSafeTimedSerializer(SECRET_KEY)
-    return serializer.dumps(user_id, salt='email-verify')
+    return serializer.dumps(user_id, salt="email-verify")
 
 
 def send_email(recipient, subject, html_content, from_name=FROM_NAME):
@@ -49,7 +48,7 @@ def send_verification_email(email: str, user_id: int):
     """Send email verification link."""
     token = create_verification_token(user_id)
     verify_link = f"{BASE_URL}/verify-email/{token}"
-    
+
     html_content = (
         f"<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>"
         "<h3 style='color: #27ae60;'>Welcome to ReelBrief!</h3>"
@@ -61,12 +60,8 @@ def send_verification_email(email: str, user_id: int):
         "<p><small>This link expires in <strong>1 hour</strong>.</small></p>"
         "</div>"
     )
-    
-    return send_email(
-        email, 
-        "Verify Your ReelBrief Email Address", 
-        html_content
-    )
+
+    return send_email(email, "Verify Your ReelBrief Email Address", html_content)
 
 
 def send_password_reset_email(user):
@@ -143,9 +138,12 @@ def send_deliverable_approved_notification(deliverable, freelancer):
         freelancer.email,
         f"Deliverable Approved: {deliverable.title}",
         html_content,
-        from_name="ReelBrief Reviews"
+        from_name="ReelBrief Reviews",
     )
+
+
 # ... [all previous functions] ...
+
 
 def send_deliverable_feedback_notification(deliverable, feedback, client):
     """Notify freelancer when client leaves feedback or requests revision."""
@@ -173,9 +171,4 @@ def send_deliverable_feedback_notification(deliverable, feedback, client):
     </div>
     """
     subject = f"Feedback: {deliverable.title} – {'Revision Needed' if feedback.is_revision_request else 'Review'}"
-    return send_email(
-        feedback.user.email,
-        subject,
-        html_content,
-        from_name="ReelBrief Feedback"
-    )
+    return send_email(feedback.user.email, subject, html_content, from_name="ReelBrief Feedback")

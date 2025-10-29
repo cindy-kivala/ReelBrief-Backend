@@ -15,7 +15,7 @@ class ActivityLog(db.Model):
     __tablename__ = "activity_log"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     action = db.Column(db.String)
     resource_type = db.Column(db.String)
     resource_id = db.Column(db.Integer)

@@ -51,3 +51,4 @@ htmlcov/
 # Logs
 *.log
 app/email_test.py
+app/data.py

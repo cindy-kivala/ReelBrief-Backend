@@ -44,12 +44,20 @@ class Review(db.Model):
     is_public = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    project = db.relationship("Project", backref=db.backref("review", uselist=False))
+    # Relationships
+    project = db.relationship(
+        "Project",
+        backref=db.backref("review", uselist=False, cascade="all, delete-orphan"),
+    )
     client = db.relationship(
-        "User", foreign_keys=[client_id], backref=db.backref("client_reviews", lazy=True)
+        "User",
+        foreign_keys=[client_id],
+        backref=db.backref("client_reviews", lazy=True, cascade="all, delete-orphan"),
     )
     freelancer = db.relationship(
-        "User", foreign_keys=[freelancer_id], backref=db.backref("freelancer_reviews", lazy=True)
+        "User",
+        foreign_keys=[freelancer_id],
+        backref=db.backref("freelancer_reviews", lazy=True, cascade="all, delete-orphan"),
     )
 
     def __repr__(self):
