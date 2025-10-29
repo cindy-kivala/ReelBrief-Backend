@@ -38,7 +38,7 @@ def send_email(to_email, subject, html):
 
 # GET /api/projects
 
-@project_bp.route("/api/projects", methods=["GET"])
+@project_bp.route("/", methods=["GET"])
 @jwt_required()
 def get_projects():
     user_id = get_jwt_identity()
@@ -68,7 +68,7 @@ def get_projects():
 
 # GET /api/projects/<id>
 
-@project_bp.route("/api/projects/<int:project_id>", methods=["GET"])
+@project_bp.route("/<int:project_id>", methods=["GET"])
 @jwt_required()
 def get_project(project_id):
     project = Project.query.get_or_404(project_id)
@@ -77,7 +77,7 @@ def get_project(project_id):
 
 
 # POST /api/projects
-@project_bp.route("/api/projects", methods=["POST"])
+@project_bp.route("/", methods=["POST"])
 @jwt_required()
 def create_project():
     data = request.get_json() or {}
@@ -107,7 +107,7 @@ def create_project():
 
 
 # PATCH /api/projects/<id>
-@project_bp.route("/api/projects/<int:project_id>", methods=["PATCH"])
+@project_bp.route("/<int:project_id>", methods=["PATCH"])
 @jwt_required()
 def update_project(project_id):
     project = Project.query.get_or_404(project_id)
@@ -132,7 +132,7 @@ def update_project(project_id):
 
 
 # DELETE /api/projects/<id>
-@project_bp.route("/api/projects/<int:project_id>", methods=["DELETE"])
+@project_bp.route("/<int:project_id>", methods=["DELETE"])
 @jwt_required()
 def delete_project(project_id):
     project = Project.query.get_or_404(project_id)
@@ -146,7 +146,7 @@ def delete_project(project_id):
 
 # POST /api/projects/<id>/assign-freelancer
 
-@project_bp.route("/api/projects/<int:project_id>/assign-freelancer", methods=["POST"])
+@project_bp.route("/<int:project_id>/assign-freelancer", methods=["POST"])
 @jwt_required()
 def assign_freelancer(project_id):
     data = request.get_json() or {}
@@ -177,7 +177,7 @@ def assign_freelancer(project_id):
 
 # POST /api/projects/<id>/complete
 
-@project_bp.route("/api/projects/<int:project_id>/complete", methods=["POST"])
+@project_bp.route("/<int:project_id>/complete", methods=["POST"])
 @jwt_required()
 def complete_project(project_id):
     project = Project.query.get_or_404(project_id)
@@ -191,7 +191,7 @@ def complete_project(project_id):
 
     return jsonify({"message": "Project marked as completed"}), 200
 
-@project_bp.route("/api/projects/<int:project_id>/suggest-freelancers", methods=["GET"])
+@project_bp.route("/<int:project_id>/suggest-freelancers", methods=["GET"])
 @jwt_required()
 def suggest_freelancers(project_id):
     project = Project.query.get_or_404(project_id)

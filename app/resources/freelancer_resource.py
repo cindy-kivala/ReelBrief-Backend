@@ -44,7 +44,7 @@ def send_email(to_email, subject, html_content):
 
 # GET /api/freelancers — List freelancers (admin only)
 
-@freelancer_bp.route("/api/freelancers", methods=["GET"])
+@freelancer_bp.route("/", methods=["GET"])
 @jwt_required()
 def list_freelancers():
     page = request.args.get("page", 1, type=int)
@@ -79,7 +79,7 @@ def list_freelancers():
 
 #  GET /api/freelancers/<id> — View one freelancer
 
-@freelancer_bp.route("/api/freelancers/<int:freelancer_id>", methods=["GET"])
+@freelancer_bp.route("/<int:freelancer_id>", methods=["GET"])
 @jwt_required()
 def get_freelancer(freelancer_id):
     freelancer = FreelancerProfile.query.get_or_404(freelancer_id)
@@ -88,7 +88,7 @@ def get_freelancer(freelancer_id):
 
 # GET /api/freelancers/pending — List pending freelancers
 
-@freelancer_bp.route("/api/freelancers/pending", methods=["GET"])
+@freelancer_bp.route("/pending", methods=["GET"])
 @jwt_required()
 def get_pending_freelancers():
     freelancers = FreelancerProfile.query.filter_by(application_status="pending").all()
@@ -104,7 +104,7 @@ def get_pending_freelancers():
 
 # PATCH /api/freelancers/<id>/approve — Approve freelancer
 
-@freelancer_bp.route("/api/freelancers/<int:freelancer_id>/approve", methods=["PATCH"])
+@freelancer_bp.route("/<int:freelancer_id>/approve", methods=["PATCH"])
 @jwt_required()
 def approve_freelancer(freelancer_id):
     freelancer = FreelancerProfile.query.get_or_404(freelancer_id)
@@ -136,7 +136,7 @@ def approve_freelancer(freelancer_id):
 
 # PATCH /api/freelancers/<id>/reject — Reject freelancer
 
-@freelancer_bp.route("/api/freelancers/<int:freelancer_id>/reject", methods=["PATCH"])
+@freelancer_bp.route("/<int:freelancer_id>/reject", methods=["PATCH"])
 @jwt_required()
 def reject_freelancer(freelancer_id):
     data = request.get_json() or {}
@@ -173,7 +173,7 @@ def reject_freelancer(freelancer_id):
 # PATCH /api/freelancers/<id>/toggle-availability
 
 @freelancer_bp.route(
-    "/api/freelancers/<int:freelancer_id>/toggle-availability", methods=["PATCH"]
+    "/<int:freelancer_id>/toggle-availability", methods=["PATCH"]
 )
 @jwt_required()
 def toggle_availability(freelancer_id):
@@ -191,7 +191,7 @@ def toggle_availability(freelancer_id):
 
 # POST /api/freelancers/<id>/skills — Add or update skill
 
-@freelancer_bp.route("/api/freelancers/<int:freelancer_id>/skills", methods=["POST"])
+@freelancer_bp.route("/<int:freelancer_id>/skills", methods=["POST"])
 @jwt_required()
 def add_skill(freelancer_id):
     user_id = get_jwt_identity()
@@ -220,7 +220,7 @@ def add_skill(freelancer_id):
 
 #  GET /api/freelancers/search — Find freelancers by skills or experience
 
-@freelancer_bp.route("/api/freelancers/search", methods=["GET"])
+@freelancer_bp.route("/search", methods=["GET"])
 @jwt_required()
 def search_freelancers():
     skills = request.args.getlist("skills")
@@ -240,7 +240,7 @@ def search_freelancers():
 
 # GET /api/freelancers/stats — Dashboard counts (for Caleb)
 
-@freelancer_bp.route("/api/freelancers/stats", methods=["GET"])
+@freelancer_bp.route("/stats", methods=["GET"])
 @jwt_required()
 def freelancer_stats():
     pending = FreelancerProfile.query.filter_by(application_status="pending").count()

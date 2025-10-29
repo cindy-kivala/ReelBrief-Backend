@@ -43,7 +43,7 @@ def create_app(config_class=Config):
     # Caleb’s routes
     from app.resources.project_resource import project_bp
     from app.resources.deliverable_resource import deliverable_bp
-    #from app.resources.escrow_resource import escrow_bp
+    from app.resources.escrow_resource import escrow_bp
 
     # Monica’s route — Freelancer Vetting System 💪🏽
     from app.resources.freelancer_resource import freelancer_bp
@@ -53,7 +53,7 @@ def create_app(config_class=Config):
     app.register_blueprint(user_bp, url_prefix="/api/users")
     app.register_blueprint(project_bp, url_prefix="/api/projects")
     app.register_blueprint(deliverable_bp, url_prefix="/api/deliverables")
-    #app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
+    app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
     app.register_blueprint(freelancer_bp, url_prefix="/api/freelancers")
 
     # ----------------------------
