@@ -3,6 +3,7 @@ Deliverable Resource - File Upload & Version Control
 Owner: Cindy
 Description: Upload files, track versions, manage deliverable lifecycle
 """
+
 import os
 import re
 from datetime import datetime, timedelta
@@ -12,13 +13,13 @@ from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.deliverable import Deliverable
-from app.models.user import User
 from app.models.project import Project
+from app.models.user import User
 from app.services.cloudinary_service import CloudinaryService
 from app.services.email_service import (
-    send_email,
     send_deliverable_approved_notification,
-    send_deliverable_feedback_notification
+    send_deliverable_feedback_notification,
+    send_email,
 )
 from app.utils.decorators import role_required
 
@@ -271,9 +272,9 @@ def create_deliverable():
             if project and project.client_id:
                 client = User.query.get(project.client_id)
                 freelancer = User.query.get(current_user_id)
-                
+
                 if client and client.email:
-                    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+                    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
                     send_email(
                         recipient=client.email,
                         subject=f"New Deliverable: {deliverable.title}",
@@ -296,7 +297,7 @@ def create_deliverable():
                                 Review Deliverable
                             </a>
                         </div>
-                        """
+                        """,
                     )
                     current_app.logger.info(f"Notification sent to client: {client.email}")
         except Exception as email_error:
@@ -470,6 +471,7 @@ def approve_deliverable(deliverable_id):
             current_app.logger.error(f"Portfolio auto-generation failed: {str(portfolio_error)}")
 
         # FIXED: Approval notification - use project freelancer, not uploader
+                    # FIXED: Approval notification - use project freelancer, not uploader
         try:
             # Get the project's assigned freelancer
             project_freelancer = User.query.get(project.freelancer_id)
@@ -482,6 +484,33 @@ def approve_deliverable(deliverable_id):
                 current_app.logger.info(f"Approval notification sent to project freelancer: {project_freelancer.email}")
         except Exception as email_error:
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
+
+        # Escrow Payment Release Logic
+        try:
+            from app.models.escrow_transaction import EscrowTransaction
+
+            escrow = EscrowTransaction.query.filter_by(project_id=project.id, status="held").first()
+
+            if escrow:
+                escrow.status = "released"
+                escrow.released_at = datetime.utcnow()
+
+                # Send payment notification - FIXED: Use project freelancer instead of uploader
+                try:
+                    project_freelancer = User.query.get(project.freelancer_id)
+                    if project_freelancer and project_freelancer.email:
+                        from app.services.email_service import send_payment_released_notification
+
+                        send_payment_released_notification(
+                            project_freelancer.email, float(escrow.amount), project.title  # FIXED: Use project freelancer
+                        )
+                        current_app.logger.info(f"Payment released: ${escrow.amount}")
+                except Exception as payment_email_error:
+                    current_app.logger.error(
+                        f"Payment notification failed: {str(payment_email_error)}"
+                    )
+        except Exception as escrow_error:
+            current_app.logger.error(f"Escrow release failed: {str(escrow_error)}")
 
         db.session.commit()
 
@@ -539,7 +568,6 @@ def request_revision(deliverable_id):
                 current_app.logger.info(f"Revision notification sent to project freelancer: {project_freelancer.email}")
         except Exception as email_error:
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
-
         return jsonify({
             "success": True,
             "message": "Revision requested successfully",
@@ -580,6 +608,7 @@ def reject_deliverable(deliverable_id):
         db.session.commit()
 
         # FIXED: Get the project's assigned freelancer
+                # FIXED: Get the project's assigned freelancer for notifications
         try:
             project = Project.query.get(deliverable.project_id)
             project_freelancer = User.query.get(project.freelancer_id)
@@ -588,7 +617,8 @@ def reject_deliverable(deliverable_id):
                 send_deliverable_feedback_notification(
                     project_freelancer.email,  # FIXED: Use project freelancer email
                     deliverable.title,
-                    f"REJECTED: {data.get('reason', 'Deliverable rejected')}"
+                    # feedback.content
+                    f"REJECTED: {data.get('reason', 'Deliverable rejected')}",
                 )
                 current_app.logger.info(f"Rejection notification sent to project freelancer: {project_freelancer.email}")
         except Exception as email_error:

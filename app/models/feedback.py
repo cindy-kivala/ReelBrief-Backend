@@ -76,15 +76,17 @@ class Feedback(db.Model):
             "is_resolved": self.is_resolved,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
-            "author": {
-                "id": self.author.id,
-                "first_name": self.author.first_name,
-                "last_name": self.author.last_name,
-                "email": self.author.email,
-                "role": self.author.role,
-            }
-            if self.author
-            else None,
+            "author": (
+                {
+                    "id": self.author.id,
+                    "first_name": self.author.first_name,
+                    "last_name": self.author.last_name,
+                    "email": self.author.email,
+                    "role": self.author.role,
+                }
+                if self.author
+                else None
+            ),
         }
 
         # Include nested replies if requested

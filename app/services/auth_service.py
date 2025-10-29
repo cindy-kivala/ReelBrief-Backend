@@ -54,7 +54,6 @@ def register_user(data: dict):
     db.session.add(user)
     db.session.commit()
 
-    # Optional: send verification email
     send_verification_email(email, user.id)
 
     return {"message": "User registered successfully", "user": user.to_dict()}, 201
@@ -68,7 +67,7 @@ def login_user(email: str, password: str):
 
     claims = {"role": user.role, "email": user.email}
     access_token = create_access_token(
-        identity=user.id, additional_claims=claims, expires_delta=timedelta(minutes=30)
+        identity=user.id, additional_claims=claims, expires_delta=False
     )
     refresh_token = create_refresh_token(identity=user.id)
 
@@ -93,7 +92,7 @@ def refresh_access_token(refresh_token: str):
 
         claims = {"role": user.role, "email": user.email}
         new_access = create_access_token(
-            identity=user_id, additional_claims=claims, expires_delta=timedelta(minutes=30)
+            identity=user_id, additional_claims=claims, expires_delta=False
         )
         return {"access_token": new_access}, 200
     except Exception as e:

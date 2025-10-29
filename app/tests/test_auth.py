@@ -10,34 +10,43 @@ Owner: Ryan
 Description: Validate user registration, login, and JWT handling.
 """
 
-import pytest
 import json
+
+import pytest
+
 
 def test_register_user_success(client, init_database):
     """Test user registration"""
-    response = client.post('/api/auth/register',
-                         json={
-                             'email': 'newuser@example.com',
-                             'password': 'password123',
-                             'first_name': 'New',
-                             'last_name': 'User',
-                             'role': 'client'
-                         })
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "email": "newuser@example.com",
+            "password": "password123",
+            "first_name": "New",
+            "last_name": "User",
+            "role": "client",
+        },
+    )
     assert response.status_code in [200, 201, 400, 409]
+
 
 def test_login_with_invalid_password(client, init_database):
     """Test login with invalid password"""
-    response = client.post('/api/auth/login',
-                         json={
-                             'email': 'test@example.com',  # This user is created in init_database
-                             'password': 'wrongpassword'
-                         })
+    response = client.post(
+        "/api/auth/login",
+        json={
+            "email": "test@example.com",  # This user is created in init_database
+            "password": "wrongpassword",
+        },
+    )
     assert response.status_code in [401, 400]
+
 
 def test_login_and_access_me(client, init_database):
     """Test login and access protected route"""
-    response = client.get('/api/auth/me')
+    response = client.get("/api/auth/me")
     assert response.status_code in [200, 401, 404]
+
 
 # import json
 

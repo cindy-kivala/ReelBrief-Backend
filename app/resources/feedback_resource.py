@@ -4,17 +4,18 @@ Owner: Cindy
 Description: Submit and manage feedback on deliverables
 """
 
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import Schema, fields, validate, ValidationError
 
 from app.extensions import db
-from app.models.feedback import Feedback
 from app.models.deliverable import Deliverable
 from app.models.user import User
 
 # FIXED: Changed url_prefix - removed trailing space
 feedback_bp = Blueprint("feedback", __name__, url_prefix='/api/feedback')
+from app.models.feedback import Feedback
+
 
 # Schemas for validation
 class FeedbackSchema(Schema):
@@ -180,7 +181,7 @@ def create_feedback():
             priority=validated_data.get('priority', 'medium'),
             parent_feedback_id=validated_data.get('parent_feedback_id')
         )
-        
+
         db.session.add(feedback)
         db.session.commit()
         
@@ -216,7 +217,8 @@ def create_feedback():
         return handle_db_error(e)
 
 
-@feedback_bp.route('/<int:feedback_id>', methods=['GET'])
+
+@feedback_bp.route("/<int:feedback_id>", methods=["GET"])
 @jwt_required()
 def get_feedback(feedback_id):
     """Get specific feedback with replies"""
@@ -233,7 +235,7 @@ def get_feedback(feedback_id):
     
     except Exception as e:
         current_app.logger.error(f"Error fetching feedback: {str(e)}")
-        return jsonify({'success': False, 'error': 'Feedback not found'}), 404
+        return jsonify({"success": False, "error": "Feedback not found"}), 404
 
 
 @feedback_bp.route('/<int:feedback_id>', methods=['PATCH'])
@@ -242,7 +244,7 @@ def update_feedback(feedback_id):
     """Update feedback content"""
     try:
         current_user_id = get_jwt_identity()
-        
+
         feedback = Feedback.query.get_or_404(feedback_id)
         
         # Authorization check
@@ -305,11 +307,12 @@ def resolve_feedback(feedback_id):
         return handle_db_error(e)
 
 
-@feedback_bp.route('/<int:feedback_id>/unresolve', methods=['PATCH'])
+@feedback_bp.route("/<int:feedback_id>/unresolve", methods=["PATCH"])
 @jwt_required()
 def unresolve_feedback(feedback_id):
     """Mark feedback as unresolved"""
     try:
+        #current_user_id = get_jwt_identity()
         feedback = Feedback.query.get_or_404(feedback_id)
         
         if hasattr(feedback, 'unresolve'):
@@ -353,17 +356,14 @@ def delete_feedback(feedback_id):
         
         db.session.delete(feedback)
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Feedback deleted successfully'
-        }), 200
-    
+
+        return jsonify({"success": True, "message": "Feedback deleted successfully"}), 200
+
     except Exception as e:
         return handle_db_error(e)
 
 
-@feedback_bp.route('/stats/<int:deliverable_id>', methods=['GET'])
+@feedback_bp.route("/stats/<int:deliverable_id>", methods=["GET"])
 @jwt_required()
 def get_feedback_stats(deliverable_id):
     """Get feedback statistics for a deliverable"""

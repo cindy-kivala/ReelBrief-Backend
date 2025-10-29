@@ -12,6 +12,8 @@ import os
 import cloudinary
 import cloudinary.api
 import cloudinary.uploader
+from flask import current_app
+from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 
 # Add logger at the top
@@ -281,3 +283,19 @@ class CloudinaryService:
             return "document"
 
         return "unknown"
+    
+    @staticmethod
+    def generate_download_url(public_id, expires_in=3600):
+        """Generate signed download URL"""
+        try:
+            return cloudinary.utils.cloudinary_url(
+                public_id,
+                resource_type="image",  # or "raw" for documents
+                type="upload",
+                secure=True,
+                sign_url=True,
+                expires_at=datetime.now() + timedelta(seconds=expires_in)
+            )[0]
+        except Exception as e:
+            current_app.logger.error(f"Download URL generation failed: {str(e)}")
+            return None

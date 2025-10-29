@@ -73,16 +73,20 @@ def create_app(config_class=Config):
 
     #  Register Blueprints 
     from app.resources.auth_resource import auth_bp
+    from app.resources.dashboard_resource import dashboard_bp
 
     from app.resources.deliverable_resource import deliverable_bp
     from app.resources.escrow_resource import escrow_bp
     from app.resources.feedback_resource import feedback_bp
+    from app.resources.invoice_resource import invoice_bp
+    from app.resources.review_resource import review_bp
     from app.resources.user_resource import user_bp
 
     # Caleb's routes
     from app.resources.project_resource import project_bp
     from app.resources.deliverable_resource import deliverable_bp
     from app.resources.escrow_resource import escrow_bp
+    from app.resources.activity_resource import activity_bp
 
     # Monica's route — Freelancer Vetting System 
     from app.resources.freelancer_resource import freelancer_bp
@@ -95,10 +99,11 @@ def create_app(config_class=Config):
     app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
     app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
     app.register_blueprint(freelancer_bp, url_prefix="/api/freelancers")
-
-    
-    # Swagger Documentation
-    
+    app.register_blueprint(invoice_bp, url_prefix="/api/invoices")
+    app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
+    app.register_blueprint(review_bp, url_prefix="/api/reviews")
+    app.register_blueprint(activity_bp, url_prefix="/api/activity")
+    # -------------------- Swagger Documentation --------------------
     swagger_config = {
         "headers": [],
         "specs": [
