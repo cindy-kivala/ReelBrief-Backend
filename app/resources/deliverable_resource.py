@@ -91,7 +91,59 @@ def get_project_deliverables(project_id):
         current_app.logger.error(f"Error fetching deliverables: {str(e)}")
         return jsonify({"success": False, "error": "Failed to fetch deliverables"}), 500
 
-
+@deliverable_bp.route("/freelancer/my-deliverables", methods=["GET", "OPTIONS"])
+@jwt_required(optional=True)
+def get_my_deliverables():
+    """
+    Get all deliverables uploaded by the current freelancer
+    Returns deliverables grouped by project with metadata
+    """
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        response = jsonify({"success": True})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,OPTIONS")
+        return response, 200
+    
+    try:
+        current_user_id = get_jwt_identity()
+        
+        if not current_user_id:
+            return jsonify({"success": False, "error": "Authentication required"}), 401
+        
+        # Get all deliverables uploaded by this freelancer
+        deliverables = Deliverable.query.filter_by(
+            uploaded_by=current_user_id
+        ).order_by(
+            Deliverable.project_id,
+            Deliverable.version_number.desc()
+        ).all()
+        
+        # Transform data with project info
+        result = []
+        for deliverable in deliverables:
+            project = Project.query.get(deliverable.project_id)
+            deliverable_dict = deliverable.to_dict(include_feedback=False)
+            
+            # Add project title
+            if project:
+                deliverable_dict['project_title'] = project.title
+            
+            result.append(deliverable_dict)
+        
+        return jsonify({
+            "success": True,
+            "deliverables": result,
+            "total": len(result)
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error fetching freelancer deliverables: {str(e)}")
+        return jsonify({
+            "success": False, 
+            "error": "Failed to fetch deliverables"
+        }), 500
 #
 # GET /api/deliverables/:id
 # - Requires: JWT auth
@@ -733,3 +785,11 @@ def compare_versions():
     except Exception as e:
         current_app.logger.error(f"Error comparing versions: {str(e)}")
         return jsonify({"success": False, "error": "Failed to compare versions"}), 500
+    
+@deliverable_bp.after_request
+def after_request(response):
+    """Add CORS headers to all responses"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')
+    return response
