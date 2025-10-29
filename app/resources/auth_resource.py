@@ -89,8 +89,8 @@ def login():
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    if not user.is_verified:
-        return jsonify({"error": "Email not verified"}), 403
+    # if not user.is_verified:
+    #     return jsonify({"error": "Email not verified"}), 403
 
     # Update last login
     user.last_login = datetime.utcnow()

@@ -56,7 +56,7 @@ class Project(db.Model):
     )
 
     # Placeholder one-to-one relationships (for future expansion)
-    # deliverables = db.relationship('Deliverable', back_populates='project', lazy=True)
+    deliverables = db.relationship('Deliverable', back_populates='project', lazy=True)
     # escrow_transaction = db.relationship('EscrowTransaction', back_populates='project', uselist=False)
     # portfolio_item = db.relationship('PortfolioItem', back_populates='project', uselist=False)
 

@@ -88,7 +88,17 @@ class FreelancerProfile(db.Model):
     updated_at = db.Column( db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow )
 
     # Relationships
-    skills = db.relationship( "Skill", secondary=FreelancerSkill, backref="freelancers", lazy="subquer")
+    user = db.relationship('User', back_populates='freelancer_profile', foreign_keys=[user_id])
+
+    skills = db.relationship( 
+        "Skill", 
+        secondary='freelancer_skills', 
+        back_populates="freelancer_profiles")
+    # freelancer_skills = db.relationship(
+    #     'FreelancerSkill', 
+    #     back_populates='freelancer_profile',
+    #     cascade='all, delete-orphan'
+    # )
 
     #  Serialization
     def to_dict(self):
@@ -111,7 +121,7 @@ class FreelancerProfile(db.Model):
             "approved_at": self.approved_at.isoformat() if self.approved_at else None,
             "approved_by": self.approved_by,
             "open_to_work": self.open_to_work,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "skills": [skill.name for skill in self.skills],
         }

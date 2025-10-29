@@ -39,6 +39,17 @@ def create_app(config_class=Config):
     ma.init_app(app)
     mail.init_app(app)
 
+    # CRITICAL FIX: Import models to configure relationships
+    with app.app_context():
+        from app.models.user import User
+        from app.models.project import Project
+        from app.models.deliverable import Deliverable
+        from app.models.feedback import Feedback
+        from app.models.freelancer import Freelancer
+        
+        # This forces SQLAlchemy to configure all relationships
+        db.create_all()
+
      # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reelbrief.vercel.app
     frontend_urls = os.getenv("FRONTEND_URLS", "http://localhost:5173").split(",")
 
@@ -68,12 +79,12 @@ def create_app(config_class=Config):
     from app.resources.feedback_resource import feedback_bp
     from app.resources.user_resource import user_bp
 
-    # Caleb’s routes
+    # Caleb's routes
     from app.resources.project_resource import project_bp
     from app.resources.deliverable_resource import deliverable_bp
     from app.resources.escrow_resource import escrow_bp
 
-    # Monica’s route — Freelancer Vetting System 
+    # Monica's route — Freelancer Vetting System 
     from app.resources.freelancer_resource import freelancer_bp
 
     # Register all
@@ -85,11 +96,9 @@ def create_app(config_class=Config):
     app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
     app.register_blueprint(freelancer_bp, url_prefix="/api/freelancers")
 
-    # ----------------------------
+    
     # Swagger Documentation
-    # ----------------------------
-    from flasgger import Swagger
-
+    
     swagger_config = {
         "headers": [],
         "specs": [
@@ -105,8 +114,6 @@ def create_app(config_class=Config):
         "specs_route": "/api/docs/",
     }
 
-    Swagger(app, config=swagger_config)
-
     swagger_template = {
         "info": {
             "title": "ReelBrief API",
@@ -120,14 +127,15 @@ def create_app(config_class=Config):
         "basePath": "/",
     }
 
+    # Initialize Swagger ONCE with both config and template
     Swagger(app, config=swagger_config, template=swagger_template)
 
     #  Return Configured App 
-    with app.app_context():
-        print("\n=== Registered Routes ===")
-        for rule in app.url_map.iter_rules():
-            print(f"{rule.endpoint}: {rule.rule} {list(rule.methods - {'OPTIONS', 'HEAD'})}")
-        print("========================\n")
+    # with app.app_context():
+    #     print("\n=== Registered Routes ===")
+    #     for rule in app.url_map.iter_rules():
+    #         print(f"{rule.endpoint}: {rule.rule} {list(rule.methods - {'OPTIONS', 'HEAD'})}")
+    #     print("========================\n")
 
     
     return app

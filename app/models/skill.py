@@ -24,6 +24,13 @@ class Skill(db.Model):
         cascade='all, delete-orphan'
     )
 
+    # Relationship back to freelancer profiles
+    freelancer_profiles = db.relationship(
+        'FreelancerProfile', 
+        secondary='freelancer_skills',  # Table name as string
+        back_populates='skills'
+    )
+
     # Optional relationship for project-skill linkage (if used)
     # project_skills = db.relationship('ProjectSkill', back_populates='skill', cascade='all, delete-orphan')
 
@@ -53,8 +60,10 @@ class FreelancerSkill(db.Model):
     )  # beginner, intermediate, expert
 
     # Relationships
-    skill = db.relationship('Skill', back_populates='freelancer_skills')
-    freelancer = db.relationship('FreelancerProfile', back_populates='freelancer_skills')
+    freelancer_profile = db.relationship(
+        'FreelancerProfile', 
+        backref=db.backref('skill_associations'))
+    skill = db.relationship('Skill')
 
     # Prevent duplicate (freelancer_id, skill_id)
     __table_args__ = (

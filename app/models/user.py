@@ -40,7 +40,7 @@ class User(db.Model):
     freelancer_profile = db.relationship(
         "FreelancerProfile",
         back_populates="user",
-        uselist=False,
+        uselist=False, #one-to-one relationship
         foreign_keys="FreelancerProfile.user_id",
     )
 
