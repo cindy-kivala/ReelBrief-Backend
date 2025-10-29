@@ -4,10 +4,11 @@ Owner: Ryan
 Description: Handles user registration, login, refresh token, email verification, and password reset.
 """
 
+import os
 import secrets
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_from_directory
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -22,7 +23,9 @@ from app.services.email_service import send_password_reset_email, send_verificat
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
-
+# --------------------------------------------------------
+# HEALTH CHECKS
+# --------------------------------------------------------
 @auth_bp.route("/")
 def auth_home():
     return jsonify({"message": "Auth routes are working!"}), 200
@@ -38,21 +41,26 @@ def test():
 # --------------------------------------------------------
 @auth_bp.post("/register")
 def register():
-    data = request.get_json()
-    required_fields = ["email", "password", "role", "first_name", "last_name"]
+    """
+    Handles registration for clients, freelancers, and admins.
+    Freelancers can upload a CV which gets saved to /uploads.
+    """
+    data = request.form  # ✅ Supports multipart/form-data
+    file = request.files.get("cv")  # ✅ Optional CV upload
 
+    required_fields = ["email", "password", "role", "first_name", "last_name"]
     if not all(data.get(field) for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
+    # Prevent duplicate email registration
     if User.query.filter_by(email=data["email"]).first():
         return jsonify({"error": "Email already exists"}), 409
 
     # Hash password
     hashed_password = generate_password_hash(data["password"])
-
-    # Create verification token
     verification_token = secrets.token_urlsafe(32)
 
+    # Create new user
     user = User(
         email=data["email"],
         password_hash=hashed_password,
@@ -63,14 +71,35 @@ def register():
         is_verified=False,
         verification_token=verification_token,
     )
-
     db.session.add(user)
     db.session.commit()
+
+    # ✅ If freelancer and uploaded CV
+    if file and data.get("role") == "freelancer":
+        upload_dir = os.path.join(os.getcwd(), "uploads")
+        os.makedirs(upload_dir, exist_ok=True)  # auto-create folder if missing
+
+        filename = file.filename
+        file_path = os.path.join(upload_dir, filename)
+        file.save(file_path)
+
+        # Create related freelancer profile
+        from app.models.freelancer_profile import FreelancerProfile
+
+        profile = FreelancerProfile(
+            user_id=user.id,
+            cv_filename=filename,
+            cv_url=f"/uploads/{filename}",
+            cv_uploaded_at=datetime.utcnow(),
+            application_status="pending",
+        )
+        db.session.add(profile)
+        db.session.commit()
 
     # Send verification email
     send_verification_email(user.email, verification_token)
 
-    return jsonify({"message": "User registered. Please verify your email."}), 201
+    return jsonify({"message": "User registered successfully."}), 201
 
 
 # --------------------------------------------------------
@@ -78,6 +107,9 @@ def register():
 # --------------------------------------------------------
 @auth_bp.post("/login")
 def login():
+    """
+    Logs in user with email and password, returns JWT tokens.
+    """
     data = request.get_json()
     email = data.get("email")
     password = data.get("password")
@@ -96,16 +128,22 @@ def login():
     user.last_login = datetime.utcnow()
     db.session.commit()
 
-    # JWT claims
+    # Create tokens
     claims = {"role": user.role, "email": user.email}
     access_token = create_access_token(
-        identity=user.id, additional_claims=claims, expires_delta=timedelta(hours=3)
+        identity=user.id,
+        additional_claims=claims,
+        expires_delta=timedelta(hours=3),
     )
     refresh_token = create_refresh_token(identity=user.id)
 
     return (
         jsonify(
-            {"user": user.to_dict(), "access_token": access_token, "refresh_token": refresh_token}
+            {
+                "user": user.to_dict(),
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+            }
         ),
         200,
     )
@@ -119,7 +157,9 @@ def login():
 def refresh():
     """Issue new access token using refresh token"""
     current_user = get_jwt_identity()
-    new_access_token = create_access_token(identity=current_user, expires_delta=timedelta(hours=3))
+    new_access_token = create_access_token(
+        identity=current_user, expires_delta=timedelta(hours=3)
+    )
     return jsonify({"access_token": new_access_token}), 200
 
 
@@ -128,6 +168,7 @@ def refresh():
 # --------------------------------------------------------
 @auth_bp.post("/verify-email")
 def verify_email():
+    """Verify a user's email after registration."""
     data = request.get_json()
     token = data.get("token")
 
@@ -152,7 +193,7 @@ def verify_email():
 @auth_bp.get("/me")
 @jwt_required()
 def me():
-    """Return the currently authenticated user"""
+    """Return the currently authenticated user's info"""
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     if not user:
@@ -204,91 +245,11 @@ def reset_password():
     return jsonify({"error": "Invalid request"}), 400
 
 
-# Test data
-@auth_bp.post("/temp-login")
-def temp_login():
-    """Temporary login using raw SQL to bypass broken models"""
-    import os
-    from datetime import timedelta
-
-    import psycopg2
-    from flask_jwt_extended import create_access_token
-    from werkzeug.security import check_password_hash
-
-    data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
-
-    if not email or not password:
-        return jsonify({"error": "Email and password required"}), 400
-
-    try:
-        # Get database connection
-        database_url = os.getenv("DATABASE_URL")
-        if not database_url:
-            return jsonify({"error": "Database configuration error"}), 500
-
-        conn = psycopg2.connect(database_url)
-        cur = conn.cursor()
-
-        # Use raw SQL to avoid SQLAlchemy model issues
-        cur.execute(
-            """
-            SELECT id, email, password_hash, role, first_name, last_name, is_verified 
-            FROM users WHERE email = %s
-        """,
-            (email,),
-        )
-
-        user_data = cur.fetchone()
-
-        if not user_data:
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Invalid credentials"}), 401
-
-        user_id, user_email, password_hash, role, first_name, last_name, is_verified = user_data
-
-        # Verify password
-        if not check_password_hash(password_hash, password):
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Invalid credentials"}), 401
-
-        if not is_verified:
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Email not verified"}), 403
-
-        # Update last login
-        cur.execute("UPDATE users SET last_login = NOW() WHERE id = %s", (user_id,))
-        conn.commit()
-
-        # Create token
-        access_token = create_access_token(
-            identity=user_id,
-            additional_claims={"role": role, "email": user_email},
-            expires_delta=timedelta(hours=3),
-        )
-
-        cur.close()
-        conn.close()
-
-        return (
-            jsonify(
-                {
-                    "access_token": access_token,
-                    "user": {
-                        "id": user_id,
-                        "email": user_email,
-                        "role": role,
-                        "first_name": first_name,
-                        "last_name": last_name,
-                    },
-                }
-            ),
-            200,
-        )
-
-    except Exception as e:
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
+# --------------------------------------------------------
+# Serve Uploaded CV Files (optional)
+# --------------------------------------------------------
+@auth_bp.route("/uploads/<filename>")
+def serve_uploaded_file(filename):
+    """Serve uploaded CVs for admin/freelancer viewing"""
+    upload_dir = os.path.join(os.getcwd(), "uploads")
+    return send_from_directory(upload_dir, filename)

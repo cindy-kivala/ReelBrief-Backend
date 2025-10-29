@@ -5,10 +5,9 @@ Description: Initializes the Flask app, extensions, blueprints, and error handle
 """
 
 import os
-
 from dotenv import load_dotenv
 from flasgger import Swagger
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
 from app.config import Config
@@ -31,42 +30,44 @@ def create_app(config_class=Config):
     def home():
         return jsonify({"message": "🎬 ReelBrief API is live!"}), 200
 
+    # -------------------- Serve Uploaded CV Files --------------------
+    @app.route("/uploads/<filename>")
+    def serve_uploaded_file(filename):
+        """Serve uploaded freelancer CVs securely from the /uploads directory."""
+        upload_dir = os.path.join(os.getcwd(), "uploads")
+        return send_from_directory(upload_dir, filename)
+
     # -------------------- Initialize Extensions --------------------
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
     ma.init_app(app)
     mail.init_app(app)
+
+    # -------------------- Configure CORS --------------------
+    # Load allowed frontend origins from .env
+    frontend_urls = os.getenv(
+        "FRONTEND_URLS",
+        "http://localhost:5173,https://reel-brief-frontend.vercel.app",
+    ).split(",")
+
     CORS(
         app,
-        resources={
-            r"/api/*": {
-                "origins": [
-                    "http://localhost:5173",  # Local development
-                    "https://reel-brief-frontend.vercel.app/",  # Production
-                    # ADD VERCEL PREVIEW URLS
-                ]
-            }
-        },
+        resources={r"/api/*": {"origins": frontend_urls}},
+        supports_credentials=True,
     )
 
     # -------------------- Register Error Handlers --------------------
     register_jwt_error_handlers(jwt)
     register_error_handlers(app)
 
-    # -------------------- Configure CORS --------------------
-    # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reelbrief.vercel.app
-    frontend_urls = os.getenv("FRONTEND_URLS", "http://localhost:5173").split(",")
-    CORS(app, resources={r"/api/*": {"origins": frontend_urls}})
-
     # -------------------- Register Blueprints --------------------
     from app.resources.auth_resource import auth_bp
-
-    # from app.resources.project_resource import project_bp
+    from app.resources.user_resource import user_bp
     from app.resources.deliverable_resource import deliverable_bp
     from app.resources.escrow_resource import escrow_bp
     from app.resources.feedback_resource import feedback_bp
-    from app.resources.user_resource import user_bp
+    # from app.resources.project_resource import project_bp  # Uncomment when ready
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
@@ -105,6 +106,10 @@ def create_app(config_class=Config):
     }
 
     Swagger(app, config=swagger_config, template=swagger_template)
+
+    # -------------------- Ensure Upload Directory Exists --------------------
+    upload_dir = os.path.join(os.getcwd(), "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
 
     # -------------------- Return Configured App --------------------
     return app
