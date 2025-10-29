@@ -31,12 +31,10 @@ class ActivityLog(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "user_id": self.user_id,
             "action": self.action,
             "resource_type": self.resource_type,
             "resource_id": self.resource_id,
-            "details": self.details,
-            "ip_address": str(self.ip_address) if self.ip_address else None,
-            "user_agent": self.user_agent,
-            "created_at": self.created_at.isoformat(),
+            "user_name": f"{self.user.first_name} {self.user.last_name}" if self.user else "System",
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "details": self.details or {},
         }

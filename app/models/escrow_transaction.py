@@ -46,8 +46,17 @@ class EscrowTransaction(db.Model):
         return {
             "id": self.id,
             "project_id": self.project_id,
+            "project_title": self.project.title if self.project else "Unknown Project",
             "client_id": self.client_id,
+            "client_name": (
+                f"{self.client.first_name} {self.client.last_name}" if self.client else "Unknown"
+            ),
             "freelancer_id": self.freelancer_id,
+            "freelancer_name": (
+                f"{self.freelancer.first_name} {self.freelancer.last_name}"
+                if self.freelancer
+                else "Unknown"
+            ),
             "admin_id": self.admin_id,
             "amount": float(self.amount),
             "currency": self.currency,
@@ -57,6 +66,8 @@ class EscrowTransaction(db.Model):
             "payment_method": self.payment_method,
             "held_at": self.held_at.isoformat() if self.held_at else None,
             "released_at": self.released_at.isoformat() if self.released_at else None,
-            "refunded_at": self.refunded_at.isoformat() if self.refunded_at else None,
+            "paid_at": (
+                self.released_at.isoformat() if self.released_at else self.held_at.isoformat()
+            ),
             "notes": self.notes,
         }
