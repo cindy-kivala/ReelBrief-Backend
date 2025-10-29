@@ -41,7 +41,7 @@ except Exception:
     ProjectSkill = None
 
 
-#Helper for safe DB commits
+# Helper for safe DB commits
 def safe_commit():
     try:
         db.session.commit()
@@ -51,10 +51,10 @@ def safe_commit():
         raise
 
 
-#  Seed skills
+# Seed skills
 def seed_skills():
     if Skill is None:
-        print(" Skill model not found — skipping skills seed.")
+        print("Skill model not found — skipping skills seed.")
         return []
 
     skills_data = [
@@ -85,7 +85,7 @@ def seed_users_and_freelancers(skills):
         print("User or FreelancerProfile model not found — skipping.")
         return [], []
 
-    # Create users 
+    # Create users
     sample_users = [
         {"email": "cindy@gmail.com", "name": "Cindy Kate", "role": "client"},
         {"email": "alice@gmail.com", "name": "Alice Doe", "role": "freelancer"},
@@ -112,11 +112,12 @@ def seed_users_and_freelancers(skills):
 
     safe_commit()
 
-    # Create freelancer profiles 
+    # Create freelancer profiles with balanced vetting statuses
     freelancer_users = [u for u in created_users if u.role == "freelancer"]
     created_profiles = []
 
-    statuses = ["pending", "approved", "rejected"]
+    statuses_distribution = ["pending", "approved", "rejected"]
+    status_index = 0
 
     sample_profiles = [
         {
@@ -145,7 +146,7 @@ def seed_users_and_freelancers(skills):
         },
     ]
 
-    for i, p in enumerate(sample_profiles):
+    for p in sample_profiles:
         existing = FreelancerProfile.query.filter_by(email=p["email"]).first()
         if existing:
             created_profiles.append(existing)
@@ -153,6 +154,9 @@ def seed_users_and_freelancers(skills):
 
         match_user = next((u for u in freelancer_users if u.email == p["email"]), None)
         user_id = match_user.id if match_user else None
+
+        application_status = statuses_distribution[status_index % len(statuses_distribution)]
+        status_index += 1
 
         profile = FreelancerProfile(
             user_id=user_id,
@@ -165,7 +169,7 @@ def seed_users_and_freelancers(skills):
             cv_url=f"https://res.cloudinary.com/demo/{p['name'].lower().replace(' ', '_')}_cv.pdf",
             cv_filename=f"{p['name'].replace(' ', '_')}_cv.pdf",
             cv_uploaded_at=datetime.utcnow() - timedelta(days=random.randint(1, 10)),
-            application_status=random.choice(statuses),
+            application_status=application_status,
             open_to_work=True,
             created_at=datetime.utcnow(),
         )
@@ -174,7 +178,7 @@ def seed_users_and_freelancers(skills):
 
     safe_commit()
 
-    #  Assign skills 
+    # Assign random skills to freelancers
     if FreelancerSkill and skills:
         for prof in created_profiles:
             chosen = random.sample(skills, min(3, len(skills)))
@@ -186,9 +190,7 @@ def seed_users_and_freelancers(skills):
                     link = FreelancerSkill(
                         freelancer_id=prof.id,
                         skill_id=sk.id,
-                        proficiency=random.choice(
-                            ["beginner", "intermediate", "expert"]
-                        ),
+                        proficiency=random.choice(["beginner", "intermediate", "expert"]),
                     )
                     db.session.add(link)
         safe_commit()
@@ -196,7 +198,7 @@ def seed_users_and_freelancers(skills):
     return created_users, created_profiles
 
 
-#  Seed projects
+# Seed projects
 def seed_projects(skills, freelancers, client_user=None):
     if Project is None:
         print("Project model not found — skipping.")
@@ -264,9 +266,7 @@ def seed_projects(skills, freelancers, client_user=None):
                     ps = ProjectSkill(
                         project_id=proj.id,
                         skill_id=sk.id,
-                        required_proficiency=random.choice(
-                            ["intermediate", "expert"]
-                        ),
+                        required_proficiency=random.choice(["intermediate", "expert"]),
                     )
                     db.session.add(ps)
         safe_commit()
@@ -285,7 +285,7 @@ def seed_projects(skills, freelancers, client_user=None):
     return created_projects
 
 
-# Running everything
+# Run everything
 def main():
     app = create_app()
     with app.app_context():
@@ -294,13 +294,10 @@ def main():
         skills = seed_skills()
         users, freelancers = seed_users_and_freelancers(skills)
 
-        client_user = next(
-            (u for u in users if getattr(u, "role", "") == "client"), users[0]
-        )
-
+        client_user = next((u for u in users if getattr(u, "role", "") == "client"), users[0])
         projects = seed_projects(skills, freelancers, client_user)
 
-        print("\n Seeding complete!")
+        print("\n✅ Seeding complete!")
         print(f"Skills: {len(skills)}")
         print(f"Users: {len(users)}")
         print(f"Freelancer Profiles: {len(freelancers)}")
