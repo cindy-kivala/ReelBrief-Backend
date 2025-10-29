@@ -62,13 +62,18 @@ def get_pagination_meta(pagination_obj):
     }
 
 
+def paginate_response(query, page=1, per_page=10):
+    """
+    Convenience function that combines pagination and metadata.
 
-# TODO: Ryan - Implement Pagination Service
-#
-# Required functions:
-#
-# def paginate_query(query, page, per_page):
-#     """Return paginated results."""
-#
-# def get_pagination_meta(pagination_obj):
-#     """Return metadata for pagination (page, total, per_page)."""
+    Args:
+        query: SQLAlchemy query object
+        page: Page number (default: 1)
+        per_page: Items per page (default: 10)
+
+    Returns:
+        Tuple of (items, metadata)
+    """
+    pagination = paginate_query(query, page, per_page)
+    metadata = get_pagination_meta(pagination)
+    return pagination.items, metadata

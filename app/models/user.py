@@ -1,13 +1,11 @@
 """
 User Model - Authentication & RBAC
-Owner: Ryan
-Description: Handles user authentication, roles (admin/freelancer/client), and profile data.
+Owner: Ryan (merged)
+Description: Core user entity with auth flags, JWT helpers, and profile/notification relationships.
 """
 
 from datetime import datetime
-
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from app.extensions import db
 
 
@@ -39,9 +37,6 @@ class User(db.Model):
     last_login = db.Column(db.DateTime)
 
     # -------------------- Relationships --------------------
-    # freelancer_profile = db.relationship(
-    #     "FreelancerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
-    # )
     freelancer_profile = db.relationship(
         "FreelancerProfile",
         back_populates="user",
@@ -50,24 +45,26 @@ class User(db.Model):
     )
 
     notifications = db.relationship(
-        "Notification", back_populates="user", cascade="all, delete-orphan"
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     # -------------------- Methods --------------------
-    def set_password(self, password: str):
-        """Hash and store password securely."""
+    def set_password(self, password: str) -> None:
+        """Hash and store user password."""
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password: str) -> bool:
-        """Validate password hash."""
+        """Verify password hash."""
         return check_password_hash(self.password_hash, password)
 
-    def get_identity(self):
-        """Return identity payload for JWT claims."""
+    def get_identity(self) -> dict:
+        """Return minimal identity for JWT claims."""
         return {"id": self.id, "email": self.email, "role": self.role}
 
-    def to_dict(self):
-        """Return a JSON-serializable user representation."""
+    def to_dict(self) -> dict:
+        """Return serializable representation for API responses."""
         return {
             "id": self.id,
             "email": self.email,
@@ -83,5 +80,5 @@ class User(db.Model):
             "last_login": self.last_login.isoformat() if self.last_login else None,
         }
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<User {self.email} ({self.role})>"

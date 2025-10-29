@@ -14,22 +14,13 @@ class Deliverable(db.Model):
     # -------------------- Primary Key --------------------
     id = db.Column(db.Integer, primary_key=True)
 
-    # -------------------- Foreign Keys --------------------
+    # Foreign Keys
     project_id = db.Column(
-        db.Integer,
-        db.ForeignKey("projects.id", ondelete="CASCADE"),
-        nullable=False
+        db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
-    uploaded_by = db.Column(
-        db.Integer,
-        db.ForeignKey("users.id"),
-        nullable=False
-    )
-    reviewed_by = db.Column(
-        db.Integer,
-        db.ForeignKey("users.id"),
-        nullable=True
-    )
+    # ADD db.ForeignKey('projects.id', ondelete='CASCADE') after Project merge
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
     # -------------------- File Info --------------------
     version_number = db.Column(db.Integer, nullable=False, default=1)
@@ -49,14 +40,15 @@ class Deliverable(db.Model):
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     reviewed_at = db.Column(db.DateTime, nullable=True)
 
-    # -------------------- Relationships --------------------
-    # project = db.relationship('Project', back_populates='deliverables')
-    uploader = db.relationship(
-        "User", foreign_keys=[uploaded_by], backref="uploaded_deliverables"
-    )
-    reviewer = db.relationship(
-        "User", foreign_keys=[reviewed_by], backref="reviewed_deliverables"
-    )
+    #
+    # Relationships:
+    # - deliverable belongs to project
+    # - deliverable has many feedback_items
+    # - deliverable belongs to uploader (User)
+    # - deliverable belongs to reviewer (User)
+    project = db.relationship("Project", back_populates="deliverables")
+    uploader = db.relationship("User", foreign_keys=[uploaded_by], backref="uploaded_deliverables")
+    reviewer = db.relationship("User", foreign_keys=[reviewed_by], backref="reviewed_deliverables")
     feedback_items = db.relationship(
         "Feedback", back_populates="deliverable", cascade="all, delete-orphan"
     )
@@ -90,19 +82,25 @@ class Deliverable(db.Model):
             "uploaded_at": self.uploaded_at.isoformat() if self.uploaded_at else None,
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
             "reviewed_by": self.reviewed_by,
-            "uploader": {
-                "id": self.uploader.id,
-                "first_name": self.uploader.first_name,
-                "last_name": self.uploader.last_name,
-                "email": self.uploader.email,
-            }
-            if self.uploader else None,
-            "reviewer": {
-                "id": self.reviewer.id,
-                "first_name": self.reviewer.first_name,
-                "last_name": self.reviewer.last_name,
-            }
-            if self.reviewer else None,
+            "uploader": (
+                {
+                    "id": self.uploader.id,
+                    "first_name": self.uploader.first_name,
+                    "last_name": self.uploader.last_name,
+                    "email": self.uploader.email,
+                }
+                if self.uploader
+                else None
+            ),
+            "reviewer": (
+                {
+                    "id": self.reviewer.id,
+                    "first_name": self.reviewer.first_name,
+                    "last_name": self.reviewer.last_name,
+                }
+                if self.reviewer
+                else None
+            ),
         }
 
         if include_feedback:

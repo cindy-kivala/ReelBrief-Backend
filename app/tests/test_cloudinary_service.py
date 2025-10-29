@@ -3,6 +3,7 @@ Cloudinary Service Tests
 Owner: Cindy
 Description: Unit tests for Cloudinary file operations
 """
+
 # Run this test as pytest app/tests/test_cloudinary_service.py -v
 
 from unittest.mock import MagicMock, Mock, patch
