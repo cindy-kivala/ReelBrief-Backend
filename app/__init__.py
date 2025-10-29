@@ -67,14 +67,21 @@ def create_app(config_class=Config):
     from app.resources.escrow_resource import escrow_bp
     from app.resources.feedback_resource import feedback_bp
     from app.resources.user_resource import user_bp
-
+    from app.resources.invoice_resource import invoice_bp
+    from app.resources.dashboard_resource import dashboard_bp
+    from app.resources.review_resource import review_bp
+    from app.resources.activity_resource import activity_bp
+   
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
     # app.register_blueprint(project_bp, url_prefix="/api/projects")
     app.register_blueprint(deliverable_bp, url_prefix="/api/deliverables")
     app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
     app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
-
+    app.register_blueprint(invoice_bp,url_prefix = "/api/invoices")
+    app.register_blueprint(dashboard_bp,url_prefix = "/api/dashboard")
+    app.register_blueprint(review_bp,url_prefix = "/api/reviews")
+    app.register_blueprint(activity_bp, url_prefix = "/api/activity")
     # -------------------- Swagger Documentation --------------------
     swagger_config = {
         "headers": [],
