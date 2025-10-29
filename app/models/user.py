@@ -5,16 +5,14 @@ Description: Handles user authentication, roles (admin/freelancer/client), and p
 """
 
 from datetime import datetime
-
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from app.extensions import db
 
 
 class User(db.Model):
     __tablename__ = "users"
 
-    # -------------------- Core Fields --------------------
+    #  Core Fields
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
@@ -25,23 +23,20 @@ class User(db.Model):
     avatar_url = db.Column(db.String(255))
     bio = db.Column(db.Text)
 
-    # -------------------- Authentication & RBAC --------------------
-    role = db.Column(db.String(50), nullable=False)  # admin, freelancer, client
-    is_active = db.Column(db.Boolean, default=False)
+    #  Authentication & RBAC 
+    role = db.Column(db.String(50), nullable=False, default="freelancer")  # admin, freelancer, client
+    is_active = db.Column(db.Boolean, default=True)
     is_verified = db.Column(db.Boolean, default=False)
     verification_token = db.Column(db.String(255), unique=True)
     reset_token = db.Column(db.String(255))
     reset_token_expires = db.Column(db.DateTime)
 
-    # -------------------- Timestamps --------------------
+    #  Timestamps 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
 
-    # -------------------- Relationships --------------------
-    # freelancer_profile = db.relationship(
-    #     "FreelancerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
-    # )
+    #  Relationships 
     freelancer_profile = db.relationship(
         "FreelancerProfile",
         back_populates="user",
@@ -49,11 +44,15 @@ class User(db.Model):
         foreign_keys="FreelancerProfile.user_id",
     )
 
+    # Future relationships (handled by Caleb/Monica)
+    # projects_as_client = db.relationship("Project", backref="client", lazy=True, foreign_keys="[Project.client_id]")
+    # projects_as_freelancer = db.relationship("Project", backref="freelancer", lazy=True, foreign_keys="[Project.freelancer_id]")
+
     notifications = db.relationship(
         "Notification", back_populates="user", cascade="all, delete-orphan"
     )
 
-    # -------------------- Methods --------------------
+    # - Methods 
     def set_password(self, password: str):
         """Hash and store password securely."""
         self.password_hash = generate_password_hash(password)
