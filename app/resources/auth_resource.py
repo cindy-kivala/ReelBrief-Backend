@@ -9,7 +9,7 @@ import secrets
 import traceback
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, request, current_app, send_from_directory
+from flask import Blueprint, jsonify, request, send_from_directory
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -19,6 +19,7 @@ from flask_jwt_extended import (
 from werkzeug.security import check_password_hash, generate_password_hash
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
+# ✅ Import db from extensions (NOT from app)
 from app.extensions import db
 from app.models import User
 from app.services.email_service import (
@@ -28,30 +29,41 @@ from app.services.email_service import (
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
+# -------------------------------------------------------------------
+# FLAGS
+# -------------------------------------------------------------------
+AUTO_VERIFY_EMAIL = os.getenv("AUTO_VERIFY_EMAIL", "false").lower() == "true"
+SECRET_KEY = os.getenv("SECRET_KEY", "devsecretkey")
 
-# -------------------- Health --------------------
+# -------------------------------------------------------------------
+# HEALTH
+# -------------------------------------------------------------------
 @auth_bp.route("/")
 def home():
-    return jsonify({"message": "🎬 Auth routes online"}), 200
+    return jsonify({
+        "message": "🎬 Auth routes online",
+        "auto_verify_email": AUTO_VERIFY_EMAIL
+    }), 200
 
 @auth_bp.route("/test")
 def test():
     return jsonify({"message": "Test route works!"}), 200
 
-
-# -------------------- Register --------------------
+# -------------------------------------------------------------------
+# REGISTER
+# -------------------------------------------------------------------
 @auth_bp.post("/register")
 def register():
-    """Register client/freelancer/admin (multipart for optional CV)."""
+    """
+    Register a client/freelancer/admin.
+    Accepts multipart/form-data to allow optional freelancer CV ('cv').
+    """
     try:
-        current_app.logger.info(f"📥 /register form: {list(request.form.keys())}")
-        current_app.logger.info(f"📎 /register files: {list(request.files.keys())}")
-
-        data = request.form
+        data = request.form or {}
         file = request.files.get("cv")
 
         required = ["email", "password", "role", "first_name", "last_name"]
-        missing = [f for f in required if not data.get(f)]
+        missing = [k for k in required if not data.get(k)]
         if missing:
             return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
 
@@ -69,17 +81,15 @@ def register():
         )
         db.session.add(user)
         db.session.commit()
-        current_app.logger.info(f"✅ Created user {user.email} ({user.role})")
+        print(f"✅ Created user {user.email} ({user.role})")
 
-        # Optional CV upload
+        # Optional CV upload for freelancers
         if file and user.role == "freelancer":
             upload_dir = os.path.join(os.getcwd(), "uploads")
             os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, file.filename)
-            file.save(file_path)
-            current_app.logger.info(f"📄 CV saved to {file_path}")
-
-            # Optional: create FreelancerProfile if model exists
+            path = os.path.join(upload_dir, file.filename)
+            file.save(path)
+            print(f"📄 CV saved → {path}")
             try:
                 from app.models.freelancer_profile import FreelancerProfile
                 profile = FreelancerProfile(
@@ -92,31 +102,44 @@ def register():
                 db.session.add(profile)
                 db.session.commit()
             except Exception as e:
-                current_app.logger.warning(f"⚠️ Could not create FreelancerProfile: {e}")
+                print(f"⚠️ Could not create FreelancerProfile: {e}")
 
-        # Send verification email (returns ok + token)
-        ok, token = send_verification_email(user.email, user.id)
-        user.verification_token = token
-        db.session.commit()
-        current_app.logger.info(f"✉️ Verification email → {user.email} | sent={ok}")
+        # Verification flow
+        dev_verify_url = None
+        if AUTO_VERIFY_EMAIL:
+            user.is_verified = True
+            user.is_active = True
+            user.verification_token = None
+            db.session.commit()
+            print("🟢 AUTO_VERIFY_EMAIL enabled: user marked verified.")
+        else:
+            # Normal email verification (SendGrid)
+            try:
+                sent, token = send_verification_email(user.email, user.id)
+                user.verification_token = token
+                db.session.commit()
+                print(f"✉️ Verification email → {user.email} | sent={sent}")
+                # For dev convenience (frontend can show this link)
+                dev_verify_url = f"{os.getenv('BASE_URL','http://localhost:5174')}/verify-email/{token}"
+            except Exception as e:
+                print(f"⚠️ Email send failed: {e}")
 
-        # ✅ Dev convenience: always return a verify URL + token so you can proceed even if email fails
-        dev_url = f"{os.getenv('BASE_URL', 'http://localhost:5174')}/verify-email/{token}"
-        payload = {
-            "message": "User registered successfully.",
-            "dev_verify_url": dev_url,
-            "verification_token": token
-        }
+        payload = {"message": "User registered successfully."}
+        if dev_verify_url:
+            payload["dev_verify_url"] = dev_verify_url
         return jsonify(payload), 201
 
     except Exception:
-        current_app.logger.error("🔥 REGISTER CRASH:\n" + traceback.format_exc())
+        print("🔥 REGISTER CRASH:")
+        print(traceback.format_exc())
         return jsonify({"error": "Registration failed"}), 500
 
-
-# -------------------- Login --------------------
+# -------------------------------------------------------------------
+# LOGIN
+# -------------------------------------------------------------------
 @auth_bp.post("/login")
 def login():
+    """Returns JWT tokens on success."""
     data = request.get_json() or {}
     email, password = data.get("email"), data.get("password")
 
@@ -127,8 +150,13 @@ def login():
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    if not user.is_verified:
+    if not user.is_verified and not AUTO_VERIFY_EMAIL:
         return jsonify({"error": "Email not verified"}), 403
+
+    # If AUTO_VERIFY_EMAIL turned on and flag not set, set it.
+    if AUTO_VERIFY_EMAIL and not user.is_verified:
+        user.is_verified = True
+        user.is_active = True
 
     user.last_login = datetime.utcnow()
     db.session.commit()
@@ -139,16 +167,24 @@ def login():
 
     return jsonify({"user": user.to_dict(), "access_token": access, "refresh_token": refresh}), 200
 
-
-# -------------------- Verify Email --------------------
+# -------------------------------------------------------------------
+# VERIFY EMAIL
+# -------------------------------------------------------------------
 @auth_bp.post("/verify-email")
 def verify_email():
+    """
+    In dev (AUTO_VERIFY_EMAIL=true) always succeed.
+    In prod, validate the timed token and clear it.
+    """
+    if AUTO_VERIFY_EMAIL:
+        return jsonify({"message": "Auto-verified (dev mode)"}), 200
+
     data = request.get_json() or {}
     token = data.get("token")
     if not token:
         return jsonify({"error": "Missing token"}), 400
 
-    serializer = URLSafeTimedSerializer(current_app.config.get("SECRET_KEY", "devsecretkey"))
+    serializer = URLSafeTimedSerializer(SECRET_KEY)
     try:
         user_id = serializer.loads(token, salt="email-verify", max_age=3600)
     except SignatureExpired:
@@ -165,11 +201,11 @@ def verify_email():
     user.verification_token = None
     db.session.commit()
 
-    current_app.logger.info(f"✅ Verified email for {user.email}")
     return jsonify({"message": "Email verified successfully"}), 200
 
-
-# -------------------- Refresh --------------------
+# -------------------------------------------------------------------
+# REFRESH
+# -------------------------------------------------------------------
 @auth_bp.post("/refresh")
 @jwt_required(refresh=True)
 def refresh():
@@ -177,8 +213,9 @@ def refresh():
     new_access = create_access_token(identity=current_user, expires_delta=timedelta(hours=3))
     return jsonify({"access_token": new_access}), 200
 
-
-# -------------------- Current user --------------------
+# -------------------------------------------------------------------
+# ME
+# -------------------------------------------------------------------
 @auth_bp.get("/me")
 @jwt_required()
 def me():
@@ -188,8 +225,9 @@ def me():
         return jsonify({"error": "User not found"}), 404
     return jsonify(user.to_dict()), 200
 
-
-# -------------------- Reset Password --------------------
+# -------------------------------------------------------------------
+# RESET PASSWORD
+# -------------------------------------------------------------------
 @auth_bp.post("/reset-password")
 def reset_password():
     data = request.get_json() or {}
@@ -197,25 +235,20 @@ def reset_password():
     token = data.get("token")
     new_password = data.get("new_password")
 
-    # Request reset
     if email and not token:
         user = User.query.filter_by(email=email).first()
         if not user:
             return jsonify({"error": "Email not found"}), 404
-
         user.reset_token = secrets.token_urlsafe(32)
-        user.reset_token_expires = datetime.utcnow() + timedelta(minutes=30)
+        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
         db.session.commit()
-
         send_password_reset_email(user)
         return jsonify({"message": "Password reset email sent"}), 200
 
-    # Confirm reset
     if token and new_password:
         user = User.query.filter_by(reset_token=token).first()
         if not user or not user.reset_token_expires or user.reset_token_expires < datetime.utcnow():
             return jsonify({"error": "Invalid or expired token"}), 400
-
         user.password_hash = generate_password_hash(new_password)
         user.reset_token = None
         user.reset_token_expires = None
@@ -224,8 +257,9 @@ def reset_password():
 
     return jsonify({"error": "Invalid request"}), 400
 
-
-# -------------------- Serve uploaded CVs --------------------
+# -------------------------------------------------------------------
+# Serve uploaded CVs
+# -------------------------------------------------------------------
 @auth_bp.route("/uploads/<filename>")
 def serve_uploaded_file(filename: str):
     upload_dir = os.path.join(os.getcwd(), "uploads")
