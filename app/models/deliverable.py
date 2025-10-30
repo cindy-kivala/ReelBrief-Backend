@@ -4,15 +4,14 @@ Owner: Cindy
 Description: Tracks file uploads with version control and Cloudinary integration
 """
 
-from datetime import datetime
-
 from app.extensions import db
+from datetime import datetime
 
 
 class Deliverable(db.Model):
     __tablename__ = "deliverables"
 
-    # Primary Key
+    # -------------------- Primary Key --------------------
     id = db.Column(db.Integer, primary_key=True)
 
     # Foreign Keys
@@ -23,26 +22,21 @@ class Deliverable(db.Model):
     uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    # - version_number (Integer, default 1)
+    # -------------------- File Info --------------------
     version_number = db.Column(db.Integer, nullable=False, default=1)
-
-    # - Files
     file_url = db.Column(db.Text, nullable=False)
-    file_type = db.Column(db.String(50))  # 'image', 'video', 'document'
+    file_type = db.Column(db.String(50))  # image, video, document
     file_size = db.Column(db.Integer)  # bytes
     cloudinary_public_id = db.Column(db.String(255))
     thumbnail_url = db.Column(db.Text)
 
-    # - title, description
-    # - change_notes (what changed from previous version)
+    # -------------------- Metadata --------------------
     title = db.Column(db.String(255))
     description = db.Column(db.Text)
-    change_notes = db.Column(db.Text)  # What changed from previous version
-
-    # - status (pending, approved, rejected, revision_requested)
+    change_notes = db.Column(db.Text)  # what changed from previous version
     status = db.Column(db.String(20), default="pending", nullable=False)
 
-    # Timestamps
+    # -------------------- Timestamps --------------------
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     reviewed_at = db.Column(db.DateTime, nullable=True)
 
@@ -59,13 +53,13 @@ class Deliverable(db.Model):
         "Feedback", back_populates="deliverable", cascade="all, delete-orphan"
     )
 
-    # indexes for faster queries
+    # -------------------- Indexes --------------------
     __table_args__ = (
         db.Index("idx_deliverables_project", "project_id"),
         db.Index("idx_deliverables_version", "project_id", "version_number"),
     )
 
-    # Methods:
+    # -------------------- Methods --------------------
     def __repr__(self):
         return f"<Deliverable {self.id} v{self.version_number} - {self.title}>"
 
@@ -109,7 +103,6 @@ class Deliverable(db.Model):
             ),
         }
 
-        # ADD AFTER FEEDBACK IS READY
         if include_feedback:
             data["feedback"] = [f.to_dict() for f in self.feedback_items]
 
@@ -125,14 +118,14 @@ class Deliverable(db.Model):
         )
         return (latest.version_number + 1) if latest else 1
 
-    def approve(self, reviewed_by_id):  # client will be approving after reviewing
+    def approve(self, reviewed_by_id):
         """Approve this deliverable"""
         self.status = "approved"
         self.reviewed_by = reviewed_by_id
         self.reviewed_at = datetime.utcnow()
         db.session.commit()
 
-    def request_revision(self):  # Remeberto add this feaure better
+    def request_revision(self):
         """Mark deliverable as needing revision"""
         self.status = "revision_requested"
         self.reviewed_at = datetime.utcnow()

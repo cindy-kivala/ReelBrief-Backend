@@ -9,8 +9,10 @@ from pathlib import Path
 from app.extensions import db
 from app.models.activity_log import ActivityLog
 
-# from app.models.skill import Skill, FreelancerSkill
-# from app.models.project import Project, ProjectSkill
+# --- Core Models ---
+from app.models.user import User
+from app.models.freelancer_profile import FreelancerProfile
+from app.models.project import Project
 from app.models.deliverable import Deliverable
 from app.models.escrow_transaction import EscrowTransaction
 from app.models.feedback import Feedback
@@ -19,8 +21,8 @@ from app.models.freelancer_profile import FreelancerProfile
 # --- Explicit imports (required for Flask-Migrate) ---
 # from app.models.user import User
 # from app.models.freelancer_profile import FreelancerProfile
-#from app.models.skill import Skill, FreelancerSkill
-#from app.models.project import Project, ProjectSkill
+from app.models.skill import Skill, FreelancerSkill
+from app.models.project import Project, ProjectSkill
 # from app.models.deliverable import Deliverable
 # from app.models.feedback import Feedback
 # from app.models.escrow_transaction import EscrowTransaction

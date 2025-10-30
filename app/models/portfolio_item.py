@@ -30,8 +30,9 @@ class PortfolioItem(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    freelancer = db.relationship("User", backref=db.backref("portfolio_items", lazy=True))
-    project = db.relationship("Project", backref=db.backref("portfolio_item", uselist=False))
+    freelancer = db.relationship("User", back_populates="portfolio_items")
+    freelancer = db.relationship("User", back_populates="portfolio_items")
+    project = db.relationship('Project', back_populates='portfolio_items')
 
     def __repr__(self):
         return f"<PortfolioItem {self.id} {self.title} Project:{self.project_id}>"

@@ -34,7 +34,7 @@ class EscrowTransaction(db.Model):
     notes = db.Column(db.Text, nullable=True)
     
     
-    project = db.relationship("Project", backref=db.backref("escrow_transaction", uselist=False))
+    project = db.relationship('Project', back_populates='escrow_transactions')
     client = db.relationship("User", foreign_keys=[client_id])
     freelancer = db.relationship("User", foreign_keys=[freelancer_id])
     admin = db.relationship("User", foreign_keys=[admin_id])

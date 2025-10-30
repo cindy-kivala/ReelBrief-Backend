@@ -1,46 +1,39 @@
 """
 Project Models
 Owner: Monica
-Description: Project management with status tracking and skill requirements
+Description: Project management with status tracking, deliverables, and skill requirements.
 """
-
 
 from datetime import datetime
 from ..extensions import db
 
 
 class Project(db.Model):
-    __tablename__ = 'projects'
+    __tablename__ = "projects"
 
+    # -------------------- Primary Key --------------------
     id = db.Column(db.Integer, primary_key=True)
 
-    # Core info
+    # -------------------- Core Info --------------------
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=False)
 
-    # Relationships to users (via their IDs)
-    client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    freelancer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    # -------------------- Foreign Keys (linked users) --------------------
+    client_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    freelancer_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    # Project details
-    status = db.Column(
-        db.String(50),
-        default='submitted'
-    )  # submitted, matching, matched, in_progress, pending_review, completed, cancelled
-
+    status = db.Column(db.String(50), default="submitted")  # submitted, in_progress, completed, etc.
     budget = db.Column(db.Numeric(10, 2), nullable=True)
     deadline = db.Column(db.DateTime, nullable=True)
     is_sensitive = db.Column(db.Boolean, default=False)
     payment_status = db.Column(
-        db.String(50),
-        default='unpaid'
+        db.String(50), default="unpaid"
     )  # unpaid, in_escrow, released, refunded
-
     project_type = db.Column(db.String(100))
-    priority = db.Column(db.String(50), default='normal')
+    priority = db.Column(db.String(50), default="normal")
 
-    # Time tracking
+    # -------------------- Time Tracking --------------------
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     matched_at = db.Column(db.DateTime)
     started_at = db.Column(db.DateTime)
@@ -48,11 +41,12 @@ class Project(db.Model):
     cancelled_at = db.Column(db.DateTime)
     cancellation_reason = db.Column(db.Text)
 
-    # Relationships
+    # -------------------- Relationships --------------------
+    # Each project can have multiple required skills
     required_skills = db.relationship(
-        'ProjectSkill',
-        back_populates='project',
-        cascade='all, delete-orphan'
+        "ProjectSkill",
+        back_populates="project",
+        cascade="all, delete-orphan",
     )
 
     # Caleb's relationships
@@ -66,11 +60,12 @@ class Project(db.Model):
 
     # Placeholder one-to-one relationships (for future expansion)
     deliverables = db.relationship('Deliverable', back_populates='project', lazy=True)
-    # escrow_transaction = db.relationship('EscrowTransaction', back_populates='project', uselist=False)
-    # portfolio_item = db.relationship('PortfolioItem', back_populates='project', uselist=False)
+    escrow_transactions = db.relationship('EscrowTransaction', back_populates='project', cascade='all, delete-orphan')
+    portfolio_items = db.relationship('PortfolioItem', back_populates='project', cascade='all, delete-orphan')
 
+    # -------------------- Methods --------------------
     def to_dict(self):
-        """Convert project to JSON-serializable dict."""
+        """Convert project instance into JSON-serializable dictionary."""
         return {
             "id": self.id,
             "title": self.title,
@@ -101,6 +96,15 @@ class Project(db.Model):
                 else "Unassigned"
             ),
             "progress": self._calculate_progress(),  # Caleb's method
+            "deliverables": [
+                {
+                    "id": d.id,
+                    "title": d.title,
+                    "status": d.status,
+                    "version_number": d.version_number,
+                }
+                for d in self.deliverables
+            ],
 
         }
  
@@ -118,33 +122,35 @@ class Project(db.Model):
 
 
 
+# -------------------------------------------------------------------
+# ProjectSkill Model
+# -------------------------------------------------------------------
 class ProjectSkill(db.Model):
-    __tablename__ = 'project_skills'
+    __tablename__ = "project_skills"
 
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
-    skill_id = db.Column(db.Integer, db.ForeignKey('skills.id'), nullable=False)
-    required_proficiency = db.Column(
-        db.String(50),
-        default='intermediate'
-    )  # beginner, intermediate, expert
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)
 
-    # Relationships
-    project = db.relationship('Project', back_populates='required_skills')
-    skill = db.relationship('Skill')
+    # Temporarily disable the skill relationship until Skill model is active
+    skill_id = db.Column(db.Integer, db.ForeignKey("skills.id"), nullable=False)
 
-    # Prevent duplicate skill entries per project
+    required_proficiency = db.Column(db.String(50), default="intermediate")
+
+    # Relationship to parent project
+    project = db.relationship("Project", back_populates="required_skills")
+    skill = db.relationship("Skill")  # Disabled until Skill model is active
+
     __table_args__ = (
-        db.UniqueConstraint('project_id', 'skill_id', name='uq_project_skill'),
+        db.UniqueConstraint("project_id", "skill_id", name="uq_project_skill"),
     )
 
     def to_dict(self):
+        """Serialize ProjectSkill to dict."""
         return {
             "id": self.id,
             "project_id": self.project_id,
             "skill_id": self.skill_id,
-            "skill_name": self.skill.name if self.skill else None,
-            "required_proficiency": self.required_proficiency
+            "required_proficiency": self.required_proficiency,
         }
 
 

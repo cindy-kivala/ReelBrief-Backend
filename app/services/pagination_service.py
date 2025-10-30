@@ -4,27 +4,41 @@ Owner: Ryan
 Description: Provides pagination utilities for API responses.
 """
 
+"""
+Pagination Service
+Owner: Ryan
+Description: Provides pagination utilities for API responses.
+"""
 
-def paginate_query(query, page=1, per_page=10):
+from math import ceil
+from flask import request
+
+def paginate_query(query, page=None, per_page=None):
     """
-    Return paginated results from a SQLAlchemy query.
+    Return paginated SQLAlchemy query results.
 
     Args:
-        query: SQLAlchemy query object
-        page: Page number (default: 1)
-        per_page: Items per page (default: 10)
+        query (BaseQuery): SQLAlchemy query object
+        page (int): Current page number (default from query params)
+        per_page (int): Results per page (default from query params)
 
     Returns:
-        Pagination object with items and metadata
+        dict: {
+            "items": list of objects,
+            "meta": pagination metadata
+        }
     """
-    if page < 1:
-        page = 1
-    if per_page < 1:
-        per_page = 10
-    if per_page > 100:  # Max limit to prevent abuse
-        per_page = 100
+    # Read pagination parameters from request if not provided
+    page = page or int(request.args.get("page", 1))
+    per_page = per_page or int(request.args.get("per_page", 10))
 
-    return query.paginate(page=page, per_page=per_page, error_out=False)
+    pagination_obj = query.paginate(page=page, per_page=per_page, error_out=False)
+    meta = get_pagination_meta(pagination_obj)
+
+    return {
+        "items": pagination_obj.items,
+        "meta": meta
+    }
 
 
 def get_pagination_meta(pagination_obj):
@@ -32,16 +46,15 @@ def get_pagination_meta(pagination_obj):
     Return metadata for pagination (page, total, per_page).
 
     Args:
-        pagination_obj: Flask-SQLAlchemy pagination object
-
+        pagination_obj (Pagination): SQLAlchemy pagination object
     Returns:
-        Dictionary with pagination metadata
+        dict: pagination metadata
     """
     return {
         "page": pagination_obj.page,
         "per_page": pagination_obj.per_page,
         "total_items": pagination_obj.total,
-        "total_pages": pagination_obj.pages,
+        "total_pages": ceil(pagination_obj.total / pagination_obj.per_page) if pagination_obj.per_page else 1,
         "has_next": pagination_obj.has_next,
         "has_prev": pagination_obj.has_prev,
         "next_page": pagination_obj.next_num if pagination_obj.has_next else None,

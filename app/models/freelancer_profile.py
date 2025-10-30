@@ -90,10 +90,20 @@ class FreelancerProfile(db.Model):
     # Relationships
     user = db.relationship('User', back_populates='freelancer_profile', foreign_keys=[user_id])
 
-    skills = db.relationship( 
-        "Skill", 
-        secondary='freelancer_skills', 
-        back_populates="freelancer_profiles")
+    skill_associations = db.relationship(
+    "FreelancerSkill", 
+    back_populates="freelancer_profile",
+    overlaps="freelancer_profiles",
+      
+)
+
+
+    skills = db.relationship(
+        "Skill",
+        secondary="freelancer_skills",
+        back_populates="freelancer_profiles",
+        overlaps="skill_associations,freelancer_skills,skill"
+    )
     # freelancer_skills = db.relationship(
     #     'FreelancerSkill', 
     #     back_populates='freelancer_profile',

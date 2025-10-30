@@ -4,10 +4,8 @@ Owner: Monica
 Description: Skills catalog and freelancer-skill associations with proficiency levels
 """
 
-
 from datetime import datetime
 from ..extensions import db
-
 
 class Skill(db.Model):
     __tablename__ = 'skills'
@@ -21,18 +19,17 @@ class Skill(db.Model):
     freelancer_skills = db.relationship(
         'FreelancerSkill',
         back_populates='skill',
-        cascade='all, delete-orphan'
+        cascade='all, delete-orphan',
+        overlaps="freelancer_profiles"
     )
 
-    # Relationship back to freelancer profiles
+    # Many-to-many relationship with FreelancerProfile
     freelancer_profiles = db.relationship(
-        'FreelancerProfile', 
-        secondary='freelancer_skills',  # Table name as string
-        back_populates='skills'
+        "FreelancerProfile",
+        secondary="freelancer_skills",
+        back_populates="skills",
+        overlaps="freelancer_skills"
     )
-
-    # Optional relationship for project-skill linkage (if used)
-    # project_skills = db.relationship('ProjectSkill', back_populates='skill', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f"<Skill {self.name}>"
@@ -45,7 +42,6 @@ class Skill(db.Model):
             "category": self.category,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None
         }
-
 
 class FreelancerSkill(db.Model):
     __tablename__ = 'freelancer_skills'
@@ -60,14 +56,16 @@ class FreelancerSkill(db.Model):
     )  # beginner, intermediate, expert
 
     # Relationships
-    freelancer_profile = db.relationship(
-        'FreelancerProfile', 
-        backref=db.backref('skill_associations'))
-    skill = db.relationship('Skill')
+    skill = db.relationship(
+        "Skill",
+        back_populates="freelancer_skills",
+        overlaps="freelancer_profiles,skills"
+    )
 
-    # Prevent duplicate (freelancer_id, skill_id)
-    __table_args__ = (
-        db.UniqueConstraint('freelancer_id', 'skill_id', name='uq_freelancer_skill'),
+    freelancer_profile = db.relationship(
+        'FreelancerProfile',
+        back_populates="skill_associations",
+        overlaps="freelancer_profiles,skills"
     )
 
     def __repr__(self):

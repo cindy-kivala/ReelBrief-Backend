@@ -5,24 +5,22 @@ Description: Handles creation, retrieval, and payment of invoices.
 """
 
 from datetime import datetime
-
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 from sqlalchemy.exc import IntegrityError
-
 from app.extensions import db
 from app.models.escrow_transaction import EscrowTransaction
 from app.models.invoice import Invoice
 from app.models.project import Project
-from app.models.user import User
 
 invoice_bp = Blueprint("invoice_bp", __name__, url_prefix="/api/invoices")
 
 
-@invoice_bp.route("/", methods=["GET"])
+# -------------------- GET /api/invoices --------------------
+@invoice_bp.get("/")
 @jwt_required()
 def list_invoices():
-    """Return paginated list of invoices based on user role."""
+    """Return paginated list of invoices for the current user."""
     user_id = get_jwt_identity()
     claims = get_jwt()
     role = claims.get("role")
@@ -32,7 +30,6 @@ def list_invoices():
 
     query = Invoice.query
 
-    # Role-based filtering
     if role == "client":
         query = query.filter_by(client_id=user_id)
     elif role == "freelancer":
@@ -43,20 +40,16 @@ def list_invoices():
     pagination = query.order_by(Invoice.issue_date.desc()).paginate(page=page, per_page=per_page)
     invoices = [inv.to_dict() for inv in pagination.items]
 
-    return (
-        jsonify(
-            {
-                "invoices": invoices,
-                "total": pagination.total,
-                "pages": pagination.pages,
-                "current_page": page,
-            }
-        ),
-        200,
-    )
+    return jsonify({
+        "invoices": invoices,
+        "total": pagination.total,
+        "pages": pagination.pages,
+        "current_page": page,
+    }), 200
 
 
-@invoice_bp.route("/<int:invoice_id>", methods=["GET"])
+# -------------------- GET /api/invoices/<id> --------------------
+@invoice_bp.get("/<int:invoice_id>")
 @jwt_required()
 def get_invoice(invoice_id):
     """Return details of a specific invoice."""
@@ -66,17 +59,17 @@ def get_invoice(invoice_id):
 
     invoice = Invoice.query.get_or_404(invoice_id)
 
-    # Restrict access to related users or admin
     if role != "admin" and user_id not in [invoice.client_id, invoice.freelancer_id]:
         return jsonify({"error": "Access denied"}), 403
 
     return jsonify({"invoice": invoice.to_dict()}), 200
 
 
-@invoice_bp.route("/", methods=["POST"])
+# -------------------- POST /api/invoices --------------------
+@invoice_bp.post("/")
 @jwt_required()
 def create_invoice():
-    """Create a new invoice for a project (usually by a freelancer)."""
+    """Create a new invoice for a project (freelancer or admin only)."""
     user_id = get_jwt_identity()
     claims = get_jwt()
     role = claims.get("role")
@@ -85,6 +78,9 @@ def create_invoice():
         return jsonify({"error": "Only freelancers or admins can create invoices"}), 403
 
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 400
+
     project_id = data.get("project_id")
     amount = data.get("amount")
     due_date = data.get("due_date")
@@ -97,11 +93,9 @@ def create_invoice():
     if not project:
         return jsonify({"error": "Project not found"}), 404
 
-    # Ensure only the freelancer of the project can invoice
     if role == "freelancer" and project.freelancer_id != user_id:
         return jsonify({"error": "You cannot invoice this project"}), 403
 
-    # Generate invoice number
     invoice_number = f"INV-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
     new_invoice = Invoice(
@@ -121,16 +115,17 @@ def create_invoice():
         db.session.rollback()
         return jsonify({"error": "Duplicate invoice number"}), 409
 
-    return (
-        jsonify({"message": "Invoice created successfully", "invoice": new_invoice.to_dict()}),
-        201,
-    )
+    return jsonify({
+        "message": "Invoice created successfully",
+        "invoice": new_invoice.to_dict()
+    }), 201
 
 
-@invoice_bp.route("/<int:invoice_id>/pay", methods=["PATCH"])
+# -------------------- PATCH /api/invoices/<id>/pay --------------------
+@invoice_bp.patch("/<int:invoice_id>/pay")
 @jwt_required()
 def pay_invoice(invoice_id):
-    """Mark an invoice as paid (typically by the client)."""
+    """Mark an invoice as paid (client only)."""
     user_id = get_jwt_identity()
     claims = get_jwt()
     role = claims.get("role")
@@ -143,11 +138,10 @@ def pay_invoice(invoice_id):
     if invoice.status == "paid":
         return jsonify({"message": "Invoice already paid"}), 200
 
-    # Simulate payment logic (could integrate with EscrowTransaction)
     invoice.status = "paid"
     invoice.paid_at = datetime.utcnow()
 
-    # Optionally update EscrowTransaction
+    # Optional: update escrow
     if invoice.escrow_id:
         escrow = EscrowTransaction.query.get(invoice.escrow_id)
         if escrow:
@@ -155,14 +149,14 @@ def pay_invoice(invoice_id):
             escrow.released_at = datetime.utcnow()
 
     db.session.commit()
-
     return jsonify({"message": "Invoice marked as paid", "invoice": invoice.to_dict()}), 200
 
 
-@invoice_bp.route("/<int:invoice_id>", methods=["DELETE"])
+# -------------------- DELETE /api/invoices/<id> --------------------
+@invoice_bp.delete("/<int:invoice_id>")
 @jwt_required()
 def delete_invoice(invoice_id):
-    """Delete an invoice (admins only)."""
+    """Delete an invoice (admin only)."""
     claims = get_jwt()
     role = claims.get("role")
 
@@ -172,5 +166,4 @@ def delete_invoice(invoice_id):
     invoice = Invoice.query.get_or_404(invoice_id)
     db.session.delete(invoice)
     db.session.commit()
-
     return jsonify({"message": "Invoice deleted successfully"}), 200
