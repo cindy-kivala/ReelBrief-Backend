@@ -78,5 +78,6 @@ def send_payment_notification(transaction):
 def send_deliverable_approved_notification(deliverable, freelancer):
     return True
 
+
 def send_deliverable_feedback_notification(deliverable, feedback, client):
     return True

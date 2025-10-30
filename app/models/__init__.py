@@ -7,15 +7,20 @@ Description: Central model registry for the ReelBrief backend.
 from pathlib import Path
 
 from app.extensions import db
+from app.models.activity_log import ActivityLog
 
 # --- Core Models ---
 from app.models.user import User
 from app.models.freelancer_profile import FreelancerProfile
 from app.models.project import Project
 from app.models.deliverable import Deliverable
+from app.models.escrow_transaction import EscrowTransaction
 from app.models.feedback import Feedback
+from app.models.invoice import Invoice
 from app.models.notification import Notification
+from app.models.portfolio_item import PortfolioItem
 from app.models.project import Project
+from app.models.review import Review
 
 # Optional / future imports (uncomment when ready)
 # from app.models.skill import Skill, FreelancerSkill
@@ -35,12 +40,10 @@ __all__ = [
     # 'ProjectSkill',
     "Deliverable",
     "Feedback",
+    "EscrowTransaction",
+    "PortfolioItem",
     "Notification",
-    # "Skill",
-    # "FreelancerSkill",
-    # "ProjectSkill",
-    # "EscrowTransaction",
-    # "PortfolioItem",
-    # "Review",
-    # "ActivityLog",
+    "Review",
+    "ActivityLog",
+    "Invoice",
 ]
