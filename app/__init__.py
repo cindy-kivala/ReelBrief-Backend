@@ -1,13 +1,13 @@
 """
-Application Factory
+Application Factory - FIXED CORS Configuration
 Owner: Ryan
-Description: Initializes the Flask app, extensions, blueprints, and error handlers.
+Description: Initializes the Flask app with proper CORS setup.
 """
 
 import os
 from dotenv import load_dotenv
 from flasgger import Swagger
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 from app.config import Config
 from app.extensions import init_extensions, db, migrate, jwt, ma, mail
@@ -37,7 +37,7 @@ def create_app(config_class=Config):
     ma.init_app(app)
     mail.init_app(app)
 
-    # CRITICAL: Configure JWT user identity and lookup - FIXED VERSION
+    # CRITICAL: Configure JWT user identity and lookup
     from app.models.user import User
     
     @jwt.user_identity_loader
@@ -76,28 +76,7 @@ def create_app(config_class=Config):
         # This forces SQLAlchemy to configure all relationships
         db.create_all()
 
-    # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reelbrief.vercel.app
-    frontend_urls = os.getenv("FRONTEND_URLS", "http://localhost:5173").split(",")
-
-    CORS(
-        app,
-        resources={
-            r"/api/*": {
-                "origins": frontend_urls,
-                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                "allow_headers": ["Content-Type", "Authorization"],
-                "supports_credentials": True,
-                "max_age": 3600
-            }
-        },
-        supports_credentials=True
-    )
-
-    # Register Error Handlers 
-    register_jwt_error_handlers(jwt)
-    register_error_handlers(app)
-
-    # Register Blueprints 
+    # Register Blueprints BEFORE CORS
     from app.resources.auth_resource import auth_bp
     from app.resources.dashboard_resource import dashboard_bp
     from app.resources.deliverable_resource import deliverable_bp
@@ -113,7 +92,6 @@ def create_app(config_class=Config):
     from app.resources.project_resource import project_bp
     from app.resources.activity_resource import activity_bp
     
-
     # Monica's route — Freelancer Vetting System 
     from app.resources.freelancer_resource import freelancer_bp
 
@@ -132,11 +110,51 @@ def create_app(config_class=Config):
     app.register_blueprint(skills_bp, url_prefix="/api")
     app.register_blueprint(test_bp, url_prefix="/api")
 
+    # FIXED: CORS Configuration AFTER Blueprint Registration
+    # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reel-brief-frontend.vercel.app
+    frontend_urls_str = os.getenv("FRONTEND_URLS", "http://localhost:5173")
+    frontend_urls = [url.strip() for url in frontend_urls_str.split(",")]
+    
+    # Log configured origins for debugging
+    print(f"CORS configured for origins: {frontend_urls}")
+
+    # Simplified and more permissive CORS configuration
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": frontend_urls,
+                "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+                "expose_headers": ["Content-Type", "Authorization"],
+                "supports_credentials": True,
+                "max_age": 3600
+            }
+        },
+        supports_credentials=True
+    )
+
+    # Add CORS headers to all responses (backup method)
+    @app.after_request
+    def after_request(response):
+        origin = request.headers.get('Origin')
+        if origin in frontend_urls:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Max-Age'] = '3600'
+        return response
+
+    # Register Error Handlers (AFTER CORS)
+    register_jwt_error_handlers(jwt)
+    register_error_handlers(app)
+
     # Swagger Documentation
     swagger_config = {
         "headers": [],
         "specs": [{"endpoint": "apispec", "route": "/apispec.json", "rule_filter": lambda r: True, "model_filter": lambda t: True}],
-        "static_url_path": "/flasgger_static",
+        "static_url_path": "/flaggger_static",
         "swagger_ui": True,
         "specs_route": "/api/docs/",
     }
