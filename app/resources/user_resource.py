@@ -24,24 +24,36 @@ user_bp = Blueprint("user_bp", __name__)
 # -------------------- GET USER BY ID --------------------
 @user_bp.route("/<int:id>", methods=["GET"])
 @jwt_required()
-def get_user(id):
-    """
-    Get a user's profile by ID.
-    Only the user themselves or an admin can access this.
-    """
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
+def get_users():
+    current_user = get_jwt_identity()
+    user = User.query.get(current_user['id'])
+    
+    if not user or user.role != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # returning user data properly
+    users = User.query.all()
+    return jsonify([user.to_dict() for user in users])
 
-    if not current_user:
-        return jsonify({"error": "Unauthorized"}), 401
+# @jwt_required()
+# def get_user(id):
+#     """
+#     Get a user's profile by ID.
+#     Only the user themselves or an admin can access this.
+#     """
+#     current_user_id = get_jwt_identity()
+#     current_user = User.query.get(current_user_id)
 
-    user = User.query.get_or_404(id)
+#     if not current_user:
+#         return jsonify({"error": "Unauthorized"}), 401
 
-    # Non-admins can only view their own profile
-    if current_user.id != user.id and current_user.role != "admin":
-        return jsonify({"error": "You are not authorized to view this profile"}), 403
+#     user = User.query.get_or_404(id)
 
-    return jsonify(user.to_dict()), 200
+#     # Non-admins can only view their own profile
+#     if current_user.id != user.id and current_user.role != "admin":
+#         return jsonify({"error": "You are not authorized to view this profile"}), 403
+
+#     return jsonify(user.to_dict()), 200
 
 
 # -------------------- UPDATE USER PROFILE --------------------

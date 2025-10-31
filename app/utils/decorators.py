@@ -29,36 +29,43 @@ def admin_required(fn):
 
 # -------------------- ROLE RESTRICTED --------------------
 def role_required(*roles):
-    """
-    Restrict route access to specific user roles.
-
-    Example usage:
-        @role_required("admin", "client")
-    """
+    """Decorator to require specific user roles"""
     def decorator(fn):
         @wraps(fn)
-        def wrapper(*args, **kwargs):  # ✅ use 'wrapper' consistently
-            verify_jwt_in_request()
-            user_id = get_jwt_identity()
-            user = User.query.get(user_id)
-
-            # ✅ define user_role properly
-            user_role = user.role if user else None
-
-            if user_role not in roles:
-                return (
-                    jsonify({
+        def wrapper(*args, **kwargs):
+            try:
+                current_user_id = get_jwt_identity()
+                
+                # Handle both dict and int identity formats
+                if isinstance(current_user_id, dict):
+                    user_id = current_user_id.get('id')
+                else:
+                    user_id = current_user_id
+                
+                user = User.query.get(user_id)
+                if not user:
+                    return jsonify({"error": "User not found"}), 404
+                
+                user_role = user.role
+                
+                # Convert single role to list for consistent handling
+                required_roles = list(roles) if roles else []
+                
+                if user_role not in required_roles:
+                    # Safely format the error message
+                    role_display = ', '.join(required_roles) if isinstance(required_roles, (list, tuple)) else str(required_roles)
+                    return jsonify({
                         "error": "Access denied",
-                        "message": f"Requires role(s): {', '.join(roles)}"
-                    }),
-                    403,
-                )
-            return fn(*args, **kwargs)
-        return wrapper  # ✅ return 'wrapper', not undefined 'wrapper' or 'decorated_function'
-
-    return decorator  # ✅ return the actual decorator, not 'wrapper'
-
-
+                        "message": f"Requires role(s): {role_display}"
+                    }), 403
+                
+                return fn(*args, **kwargs)
+                
+            except Exception as e:
+                return jsonify({"error": "Authorization failed", "message": str(e)}), 500
+        
+        return wrapper
+    return decorator
 # -------------------- ADMIN SHORTCUT --------------------
 def admin_required(fn):
     """Restrict route access to admin users only (shortcut)."""

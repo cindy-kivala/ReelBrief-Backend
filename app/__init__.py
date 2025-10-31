@@ -18,25 +18,51 @@ from app.utils.jwt_handlers import register_jwt_error_handlers
 def create_app(config_class=Config):
     """Application factory pattern for ReelBrief."""
 
-    #  Load Environment Variables
+    # Load Environment Variables
     load_dotenv()
 
     app = Flask(__name__)
     app.config.from_object(config_class)
-
     app.url_map.strict_slashes = False
 
-    #  Health Check Route 
+    # Health Check Route 
     @app.route("/")
     def home():
         return jsonify({"message": "ReelBrief API is live!"}), 200
 
-    #  Initialize Extensions 
+    # Initialize Extensions 
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
     ma.init_app(app)
     mail.init_app(app)
+
+    # CRITICAL: Configure JWT user identity and lookup - FIXED VERSION
+    from app.models.user import User
+    
+    @jwt.user_identity_loader
+    def user_identity_lookup(user):
+        """
+        This function receives whatever is passed as 'identity' in create_access_token()
+        It should return a simple, serializable identity (usually user ID)
+        """
+        # Handle both User objects and integer IDs
+        if isinstance(user, User):
+            return user.id  # Return just the ID for the token
+        elif isinstance(user, dict):
+            return user.get('id')  # Extract ID from dict
+        else:
+            return user  # Assume it's already an ID
+
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        """
+        This function receives the identity from the token and loads the full User object
+        """
+        identity = jwt_data["sub"]  # This will be the user ID (integer)
+        
+        # The identity should be the user ID from user_identity_lookup
+        return User.query.get(identity)
 
     # CRITICAL FIX: Import models to configure relationships
     with app.app_context():
@@ -45,11 +71,12 @@ def create_app(config_class=Config):
         from app.models.deliverable import Deliverable
         from app.models.feedback import Feedback
         from app.models.freelancer import Freelancer
+        from app.models.review import Review
         
         # This forces SQLAlchemy to configure all relationships
         db.create_all()
 
-     # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reelbrief.vercel.app
+    # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reelbrief.vercel.app
     frontend_urls = os.getenv("FRONTEND_URLS", "http://localhost:5173").split(",")
 
     CORS(
@@ -66,63 +93,31 @@ def create_app(config_class=Config):
         supports_credentials=True
     )
 
-    #  Register Error Handlers 
+    # Register Error Handlers 
     register_jwt_error_handlers(jwt)
     register_error_handlers(app)
 
-    #  Register Blueprints 
+    # Register Blueprints 
     from app.resources.auth_resource import auth_bp
     from app.resources.dashboard_resource import dashboard_bp
-
     from app.resources.deliverable_resource import deliverable_bp
     from app.resources.escrow_resource import escrow_bp
     from app.resources.feedback_resource import feedback_bp
     from app.resources.invoice_resource import invoice_bp
     from app.resources.review_resource import review_bp
     from app.resources.user_resource import user_bp
-    # Serve uploads (CVs)
-    # @app.route("/uploads/<filename>")
-    # def serve_uploaded_file(filename):
-    #     upload_dir = os.path.join(os.getcwd(), "uploads")
-    #     return send_from_directory(upload_dir, filename)
-
-    # # Extensions (incl. SendGrid)
-    # init_extensions(app)
-
-    # # CORS
-    # frontend_urls = app.config.get("FRONTEND_URLS", "").split(",")
-    # app.logger.info(f"Allowed CORS Origins: {frontend_urls}")
-    # CORS(
-    #     app,
-    #     resources={r"/api/*": {"origins": frontend_urls}},
-    #     supports_credentials=True,
-    #     allow_headers=["Content-Type", "Authorization"],
-    #     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    # )
-
-    # # Error handlers
-    # from app.extensions import jwt
-    # register_jwt_error_handlers(jwt)
-    # register_error_handlers(app)
-
-    # # Blueprints
-    # from app.resources.auth_resource import auth_bp
-    # from app.resources.user_resource import user_bp
-    # from app.resources.deliverable_resource import deliverable_bp
-    # from app.resources.escrow_resource import escrow_bp
-    # from app.resources.feedback_resource import feedback_bp
-    # # from app.resources.project_resource import project_bp
+    from app.resources.skills_resource import skills_bp
+    from app.routes.test_notifications import test_bp
 
     # Caleb's routes
     from app.resources.project_resource import project_bp
-    from app.resources.deliverable_resource import deliverable_bp
-    from app.resources.escrow_resource import escrow_bp
     from app.resources.activity_resource import activity_bp
+    
 
     # Monica's route — Freelancer Vetting System 
     from app.resources.freelancer_resource import freelancer_bp
 
-    # Register all
+    # Register all blueprints
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
     app.register_blueprint(project_bp, url_prefix="/api/projects")
@@ -134,7 +129,10 @@ def create_app(config_class=Config):
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
     app.register_blueprint(review_bp, url_prefix="/api/reviews")
     app.register_blueprint(activity_bp, url_prefix="/api/activity")
-    # -------------------- Swagger Documentation --------------------
+    app.register_blueprint(skills_bp, url_prefix="/api")
+    app.register_blueprint(test_bp, url_prefix="/api")
+
+    # Swagger Documentation
     swagger_config = {
         "headers": [],
         "specs": [{"endpoint": "apispec", "route": "/apispec.json", "rule_filter": lambda r: True, "model_filter": lambda t: True}],
@@ -152,25 +150,7 @@ def create_app(config_class=Config):
         "basePath": "/",
     }
 
-    # Initialize Swagger ONCE with both config and template
+    # Initialize Swagger
     Swagger(app, config=swagger_config, template=swagger_template)
-
-    #  Return Configured App 
-    # with app.app_context():
-    #     print("\n=== Registered Routes ===")
-    #     for rule in app.url_map.iter_rules():
-    #         print(f"{rule.endpoint}: {rule.rule} {list(rule.methods - {'OPTIONS', 'HEAD'})}")
-    #     print("========================\n")
-
-    
-    # return app
-    # Swagger(app, config=swagger_config, template=swagger_template)
-
-    # # Ensure uploads dir exists
-    # os.makedirs(os.path.join(os.getcwd(), "uploads"), exist_ok=True)
-
-    # # Log DB (sanitized)
-    # db_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
-    # app.logger.info(f"🔌 DB in use → {db_uri.split('@')[-1] if '@' in db_uri else db_uri}")
 
     return app

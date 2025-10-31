@@ -6,8 +6,8 @@ Description: Client feedback with priority levels and threaded comments
 
 from datetime import datetime
 from app.extensions import db
-from app.models.deliverable import Deliverable  # ✅ Direct import — breaks circular dependency
-from app.models.user import User  # ✅ Import only what’s needed
+from app.models.deliverable import Deliverable  # Direct import — breaks circular dependency
+from app.models.user import User  # Import only what’s needed
 
 
 class Feedback(db.Model):

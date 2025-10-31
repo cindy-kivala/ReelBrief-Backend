@@ -32,7 +32,7 @@ auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 # -------------------- Health --------------------
 @auth_bp.route("/")
 def home():
-    return jsonify({"message": "🎬 Auth routes online"}), 200
+    return jsonify({"message": "Auth routes online"}), 200
 
 @auth_bp.route("/test")
 def test():
@@ -44,8 +44,8 @@ def test():
 def register():
     """Register client/freelancer/admin (multipart for optional CV)."""
     try:
-        current_app.logger.info(f"📥 /register form: {list(request.form.keys())}")
-        current_app.logger.info(f"📎 /register files: {list(request.files.keys())}")
+        current_app.logger.info(f"/register form: {list(request.form.keys())}")
+        current_app.logger.info(f"/register files: {list(request.files.keys())}")
 
         data = request.form
         file = request.files.get("cv")
@@ -58,6 +58,7 @@ def register():
         if User.query.filter_by(email=data["email"]).first():
             return jsonify({"error": "Email already exists"}), 409
 
+        # Create user
         user = User(
             email=data["email"],
             password_hash=generate_password_hash(data["password"]),
@@ -68,49 +69,80 @@ def register():
             is_verified=False,
         )
         db.session.add(user)
-        db.session.commit()
-        current_app.logger.info(f"✅ Created user {user.email} ({user.role})")
+        db.session.flush()  # Get user ID without committing
+        current_app.logger.info(f"Created user {user.email} ({user.role})")
 
-        # Optional CV upload
+        # Handle CV upload and create FreelancerProfile for freelancers
         if file and user.role == "freelancer":
-            upload_dir = os.path.join(os.getcwd(), "uploads")
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, file.filename)
-            file.save(file_path)
-            current_app.logger.info(f"📄 CV saved to {file_path}")
+            current_app.logger.info(f"Processing CV for freelancer: {file.filename}")
+            
+            # Validate file type
+            allowed_extensions = {'pdf', 'doc', 'docx'}
+            file_ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+            
+            if file_ext not in allowed_extensions:
+                return jsonify({"error": "Only PDF, DOC, and DOCX files are allowed"}), 400
 
-            # Optional: create FreelancerProfile if model exists
+            # Create uploads directory
+            upload_dir = os.path.join(current_app.root_path, 'uploads')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Generate unique filename
+            import uuid
+            from werkzeug.utils import secure_filename
+            filename = secure_filename(file.filename)
+            unique_filename = f"{uuid.uuid4().hex}_{filename}"
+            file_path = os.path.join(upload_dir, unique_filename)
+            
+            # Save file
+            file.save(file_path)
+            
+            # Create FreelancerProfile with CV data
             try:
                 from app.models.freelancer_profile import FreelancerProfile
                 profile = FreelancerProfile(
                     user_id=user.id,
-                    cv_filename=file.filename,
-                    cv_url=f"/uploads/{file.filename}",
+                    name=f"{user.first_name} {user.last_name}",
+                    email=user.email,
+                    cv_filename=filename,
+                    cv_url=f"/uploads/{unique_filename}",
                     cv_uploaded_at=datetime.utcnow(),
                     application_status="pending",
+                    open_to_work=True,
+                    bio="",  # Can be updated later
+                    hourly_rate=0.0,  # Default, can be updated later
+                    years_experience=0  # Default, can be updated later
                 )
                 db.session.add(profile)
-                db.session.commit()
+                current_app.logger.info(f"Created FreelancerProfile for user {user.id}")
             except Exception as e:
-                current_app.logger.warning(f"⚠️ Could not create FreelancerProfile: {e}")
+                current_app.logger.error(f" Failed to create FreelancerProfile: {str(e)}")
+                # Don't fail registration if profile creation fails
+                pass
 
-        # Send verification email (returns ok + token)
+        # Commit everything
+        db.session.commit()
+
+        # Send verification email
         ok, token = send_verification_email(user.email, user.id)
         user.verification_token = token
         db.session.commit()
-        current_app.logger.info(f"✉️ Verification email → {user.email} | sent={ok}")
+        
+        current_app.logger.info(f" Verification email → {user.email} | sent={ok}")
 
-        # ✅ Dev convenience: always return a verify URL + token so you can proceed even if email fails
+        # Return success response
         dev_url = f"{os.getenv('BASE_URL', 'http://localhost:5174')}/verify-email/{token}"
-        payload = {
+        return jsonify({
             "message": "User registered successfully.",
+            "user": user.to_dict(),
             "dev_verify_url": dev_url,
             "verification_token": token
-        }
-        return jsonify(payload), 201
+        }), 201
 
-    except Exception:
-        current_app.logger.error("🔥 REGISTER CRASH:\n" + traceback.format_exc())
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f" REGISTER CRASH: {str(e)}")
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"error": "Registration failed"}), 500
 
 
@@ -134,12 +166,21 @@ def login():
     db.session.commit()
 
     claims = {"role": user.role, "email": user.email}
-    access = create_access_token(identity=user.id, additional_claims=claims, expires_delta=timedelta(hours=3))
-    refresh = create_refresh_token(identity=user.id)
+    
+    # Pass the User OBJECT to create_access_token
+    # The user_identity_lookup will extract the ID from it
+    access = create_access_token(
+        identity=user,  # Pass the User object, not just the ID
+        additional_claims=claims, 
+        expires_delta=timedelta(hours=3)
+    )
+    refresh = create_refresh_token(identity=user)  # Also pass User object
 
-    return jsonify({"user": user.to_dict(), "access_token": access, "refresh_token": refresh}), 200
-
-
+    return jsonify({
+        "user": user.to_dict(), 
+        "access_token": access, 
+        "refresh_token": refresh
+    }), 200
 # -------------------- Verify Email --------------------
 @auth_bp.post("/verify-email")
 def verify_email():
@@ -173,9 +214,29 @@ def verify_email():
 @auth_bp.post("/refresh")
 @jwt_required(refresh=True)
 def refresh():
-    current_user = get_jwt_identity()
-    new_access = create_access_token(identity=current_user, expires_delta=timedelta(hours=3))
-    return jsonify({"access_token": new_access}), 200
+    """Refresh access token - fixed to handle new identity format"""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        # current_user_id should be the user ID (integer)
+        user = User.query.get(current_user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        claims = {"role": user.role, "email": user.email}
+        
+        # Pass the User OBJECT to create_access_token
+        new_access = create_access_token(
+            identity=user,  # Pass User object
+            additional_claims=claims, 
+            expires_delta=timedelta(hours=3)
+        )
+        
+        return jsonify({"access_token": new_access}), 200
+        
+    except Exception as e:
+        print(f"Refresh token error: {e}")
+        return jsonify({"error": "Token refresh failed"}), 500
 
 
 # -------------------- Current user --------------------

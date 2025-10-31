@@ -6,9 +6,9 @@ Owner: Monica
 from flask import Blueprint, jsonify
 from ..models.skill import Skill
 
-skills_bp = Blueprint("skills", __name__)
+skills_bp = Blueprint("skills", __name__, url_prefix="/api")
 
-@skills_bp.route("/api/skills", methods=["GET"])
+@skills_bp.route("/skills", methods=["GET"])
 def list_skills():
     skills = Skill.query.all()
     return jsonify({

@@ -21,6 +21,8 @@ from app.services.email_service import (
     send_deliverable_feedback_notification,
     send_email,
 )
+from app.models.portfolio_item import PortfolioItem
+from app.models.escrow_transaction import EscrowTransaction
 from app.utils.decorators import role_required
 
 deliverable_bp = Blueprint("deliverables", __name__, url_prefix="/api/deliverables")
@@ -42,8 +44,21 @@ def validate_deliverable_data(title, description, change_notes):
     return title, description, change_notes
 
 def create_portfolio_item(project, deliverable):
-    """Helper function to create portfolio item"""
-    from app.models.portfolio_item import PortfolioItem
+    """Enhanced helper function to create portfolio item"""
+    # Generate skills from project tags or deliverable description
+    skills_used = []
+    if project.tags:
+        skills_used = project.tags
+    elif project.required_skills:
+        skills_used = [skill.name for skill in project.required_skills]
+    
+    # Calculate project duration
+    project_duration = "Not specified"
+    if project.created_at and project.completed_at:
+        duration_days = (project.completed_at - project.created_at).days
+        project_duration = f"{duration_days} days"
+    elif project.duration:
+        project_duration = f"{project.duration} days"
     
     return PortfolioItem(
         freelancer_id=project.freelancer_id,
@@ -51,13 +66,14 @@ def create_portfolio_item(project, deliverable):
         title=project.title,
         description=project.description or f"Completed project: {project.title}",
         deliverables_description=f"Approved deliverable: {deliverable.title}",
-        skills_used=getattr(project, 'tags', []) or [],
-        project_duration=f"{project.duration} days" if project.duration else "Not specified",
+        skills_used=skills_used,
+        project_duration=project_duration,
         client_feedback="Project successfully completed and approved",
         is_visible=True,
-        featured_image_url=deliverable.thumbnail_url or deliverable.file_url,
+        cover_image_url=deliverable.thumbnail_url or deliverable.file_url,
         project_url=f"/projects/{project.id}",
-        completion_date=datetime.utcnow()
+        completion_date=datetime.utcnow(),
+        tags=skills_used  # Add tags for better searchability
     )
 
 def error_response(message, status_code, details=None):
@@ -417,18 +433,18 @@ def approve_deliverable(deliverable_id):
         if deliverable.status == "approved":
             return error_response("Deliverable already approved", 400)
 
+        # Approve the deliverable
         deliverable.approve(reviewed_by_id=current_user_id)
         project = Project.query.get(deliverable.project_id)
 
-        # Portfolio Auto-Generation Logic
+        # PORTFOLIO AUTO-GENERATION - Enhanced Logic
+        portfolio_created = False
         try:
             if (project and 
-                project.status == 'completed' and 
-                not getattr(project, 'is_sensitive', False) and
-                project.freelancer_id):
+                project.freelancer_id and  # Must have a freelancer assigned
+                not getattr(project, 'is_sensitive', False)):  # Not sensitive
                 
-                from app.models.portfolio_item import PortfolioItem
-                
+                # Check if portfolio item already exists for this project
                 existing_portfolio = PortfolioItem.query.filter_by(
                     project_id=project.id,
                     freelancer_id=project.freelancer_id
@@ -437,47 +453,60 @@ def approve_deliverable(deliverable_id):
                 if not existing_portfolio:
                     portfolio = create_portfolio_item(project, deliverable)
                     db.session.add(portfolio)
-                    current_app.logger.info(f"Auto-generated portfolio item for project {project.id}")
+                    portfolio_created = True
                     
-                    # FIXED: Get the project freelancer, not the uploader
+                    current_app.logger.info(
+                        f"Auto-generated portfolio item for project {project.id}, "
+                        f"freelancer {project.freelancer_id}"
+                    )
+                    
+                    # Send notification to project freelancer
                     project_freelancer = User.query.get(project.freelancer_id)
                     if project_freelancer and project_freelancer.email:
                         try:
+                            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
                             send_email(
                                 recipient=project_freelancer.email,
-                                subject="Portfolio Item Added!",
+                                subject="🎉 Portfolio Item Added Automatically!",
                                 html_content=f"""
                                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                                     <h2 style="color: #1E3A8A;">Portfolio Item Added</h2>
                                     <p>Hello {project_freelancer.first_name},</p>
                                     <p>Great news! Your project <strong>"{project.title}"</strong> has been automatically added to your portfolio.</p>
                                     <p>Clients can now see this completed work when browsing your profile.</p>
+                                    
                                     <div style="background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
                                         <h3 style="margin: 0 0 10px 0; color: #1F2937;">{project.title}</h3>
                                         <p style="margin: 5px 0;"><strong>Status:</strong> Completed & Approved</p>
                                         <p style="margin: 5px 0;"><strong>Deliverable:</strong> {deliverable.title}</p>
+                                        <p style="margin: 5px 0;"><strong>Added to Portfolio:</strong> {datetime.utcnow().strftime('%B %d, %Y')}</p>
                                     </div>
-                                    <a href="{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/portfolio" 
+                                    
+                                    <a href="{frontend_url}/portfolio" 
                                        style="display: inline-block; background-color: #1E3A8A; color: white; 
                                               padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
                                         View My Portfolio
                                     </a>
+                                    
+                                    <p style="color: #6B7280; font-size: 14px;">
+                                        You can manage visibility of this item in your portfolio settings.
+                                    </p>
                                 </div>
                                 """
                             )
                         except Exception as portfolio_email_error:
                             current_app.logger.error(f"Portfolio notification email failed: {str(portfolio_email_error)}")
+                
         except Exception as portfolio_error:
             current_app.logger.error(f"Portfolio auto-generation failed: {str(portfolio_error)}")
+            # Don't fail the whole approval if portfolio generation fails
 
-        # FIXED: Approval notification - use project freelancer, not uploader
-                    # FIXED: Approval notification - use project freelancer, not uploader
+        # Approval notification
         try:
-            # Get the project's assigned freelancer
             project_freelancer = User.query.get(project.freelancer_id)
             if project_freelancer and project_freelancer.email:
                 send_deliverable_approved_notification(
-                    project_freelancer.email,  # FIXED: Use project freelancer email
+                    project_freelancer.email,
                     deliverable.title,
                     project.title
                 )
@@ -487,28 +516,23 @@ def approve_deliverable(deliverable_id):
 
         # Escrow Payment Release Logic
         try:
-            from app.models.escrow_transaction import EscrowTransaction
-
             escrow = EscrowTransaction.query.filter_by(project_id=project.id, status="held").first()
 
             if escrow:
                 escrow.status = "released"
                 escrow.released_at = datetime.utcnow()
 
-                # Send payment notification - FIXED: Use project freelancer instead of uploader
+                # Send payment notification
                 try:
                     project_freelancer = User.query.get(project.freelancer_id)
                     if project_freelancer and project_freelancer.email:
                         from app.services.email_service import send_payment_released_notification
-
                         send_payment_released_notification(
-                            project_freelancer.email, float(escrow.amount), project.title  # FIXED: Use project freelancer
+                            project_freelancer.email, float(escrow.amount), project.title
                         )
                         current_app.logger.info(f"Payment released: ${escrow.amount}")
                 except Exception as payment_email_error:
-                    current_app.logger.error(
-                        f"Payment notification failed: {str(payment_email_error)}"
-                    )
+                    current_app.logger.error(f"Payment notification failed: {str(payment_email_error)}")
         except Exception as escrow_error:
             current_app.logger.error(f"Escrow release failed: {str(escrow_error)}")
 
@@ -516,8 +540,10 @@ def approve_deliverable(deliverable_id):
 
         return jsonify({
             "success": True,
-            "message": "Deliverable approved successfully",
+            "message": "Deliverable approved successfully" + 
+                      (" and portfolio item created" if portfolio_created else ""),
             "deliverable": deliverable.to_dict(),
+            "portfolio_created": portfolio_created
         }), 200
 
     except Exception as e:
@@ -554,14 +580,14 @@ def request_revision(deliverable_id):
         db.session.add(feedback)
         db.session.commit()
 
-        # FIXED: Get the project's assigned freelancer
+        #  Get the project's assigned freelancer
         try:
             project = Project.query.get(deliverable.project_id)
             project_freelancer = User.query.get(project.freelancer_id)
             
             if project_freelancer and project_freelancer.email:
                 send_deliverable_feedback_notification(
-                    project_freelancer.email,  # FIXED: Use project freelancer email
+                    project_freelancer.email,  # Use project freelancer email
                     deliverable.title,
                     feedback.content
                 )
@@ -579,7 +605,6 @@ def request_revision(deliverable_id):
         db.session.rollback()
         current_app.logger.error(f"Error requesting revision: {str(e)}")
         return error_response("Failed to request revision", 500, str(e))
-
 
 @deliverable_bp.route("/<int:deliverable_id>/reject", methods=["POST"])
 @jwt_required()
@@ -607,8 +632,7 @@ def reject_deliverable(deliverable_id):
         db.session.add(feedback)
         db.session.commit()
 
-        # FIXED: Get the project's assigned freelancer
-                # FIXED: Get the project's assigned freelancer for notifications
+        # Get the project's assigned freelancer for notifications
         try:
             project = Project.query.get(deliverable.project_id)
             project_freelancer = User.query.get(project.freelancer_id)
@@ -617,7 +641,6 @@ def reject_deliverable(deliverable_id):
                 send_deliverable_feedback_notification(
                     project_freelancer.email,  # FIXED: Use project freelancer email
                     deliverable.title,
-                    # feedback.content
                     f"REJECTED: {data.get('reason', 'Deliverable rejected')}",
                 )
                 current_app.logger.info(f"Rejection notification sent to project freelancer: {project_freelancer.email}")
@@ -669,3 +692,67 @@ def compare_versions():
     except Exception as e:
         current_app.logger.error(f"Error comparing versions: {str(e)}")
         return error_response("Failed to compare versions", 500, str(e))
+
+@deliverable_bp.route("/portfolio/items", methods=["GET"])
+@jwt_required()
+def get_my_portfolio_items():
+    """Get portfolio items for current freelancer"""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 10, type=int)
+        featured_only = request.args.get("featured", type=bool)
+        
+        query = PortfolioItem.query.filter_by(freelancer_id=current_user_id)
+        
+        if featured_only:
+            query = query.filter_by(is_featured=True)
+        
+        query = query.filter_by(is_visible=True).order_by(
+            PortfolioItem.is_featured.desc(), 
+            PortfolioItem.display_order.asc(),
+            PortfolioItem.created_at.desc()
+        )
+        
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return jsonify({
+            "success": True,
+            "portfolio_items": [item.to_dict() for item in pagination.items],
+            "pagination": {
+                "page": pagination.page,
+                "per_page": pagination.per_page,
+                "total_pages": pagination.pages,
+                "total_items": pagination.total,
+            }
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error fetching portfolio items: {str(e)}")
+        return error_response("Failed to fetch portfolio items", 500, str(e))
+
+@deliverable_bp.route("/portfolio/items/<int:item_id>/toggle-visibility", methods=["PATCH"])
+@jwt_required()
+def toggle_portfolio_visibility(item_id):
+    """Toggle portfolio item visibility"""
+    try:
+        current_user_id = get_jwt_identity()
+        portfolio_item = PortfolioItem.query.get_or_404(item_id)
+        
+        if portfolio_item.freelancer_id != current_user_id:
+            return error_response("Unauthorized", 403)
+            
+        portfolio_item.is_visible = not portfolio_item.is_visible
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"Portfolio item {'visible' if portfolio_item.is_visible else 'hidden'}",
+            "portfolio_item": portfolio_item.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error toggling portfolio visibility: {str(e)}")
+        return error_response("Failed to update portfolio item", 500, str(e))
