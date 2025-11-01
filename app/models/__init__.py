@@ -1,56 +1,55 @@
 """
-Models package - hybrid auto-import and explicit registration.
----------------------------------------------------------------
-Explicit imports ensure Flask-Migrate detects models.
-Auto-import safely loads any new model files teammates add.
+app/models/__init__.py
+Owner: Ryan
+Description: Central model registry for the ReelBrief backend.
 """
 
-import importlib
-import pkgutil
 from pathlib import Path
+
+from app.extensions import db
+from app.models.activity_log import ActivityLog
+
+# --- Core Models ---
+from app.models.user import User
+from app.models.freelancer_profile import FreelancerProfile
+from app.models.project import Project
+from app.models.deliverable import Deliverable
+from app.models.escrow_transaction import EscrowTransaction
+from app.models.feedback import Feedback
+from app.models.freelancer_profile import FreelancerProfile
 
 # --- Explicit imports (required for Flask-Migrate) ---
 # from app.models.user import User
 # from app.models.freelancer_profile import FreelancerProfile
-# from app.models.skill import Skill, FreelancerSkill
-# from app.models.project import Project, ProjectSkill
+from app.models.skill import Skill, FreelancerSkill
+from app.models.project import Project, ProjectSkill
 # from app.models.deliverable import Deliverable
 # from app.models.feedback import Feedback
 # from app.models.escrow_transaction import EscrowTransaction
 # from app.models.portfolio_item import PortfolioItem
-# from app.models.notification import Notification
-# from app.models.review import Review
-# from app.models.activity_log import ActivityLog
+from app.models.invoice import Invoice
+from app.models.notification import Notification
+from app.models.portfolio_item import PortfolioItem
+from app.models.project import Project
+from app.models.review import Review
 
-
-# --- Auto-import any new modules teammates add ---
-# This prevents forgetting to import new models manually.
-package_name = __name__  # "app.models"
-package_path = Path(__file__).parent
-
-for _, module_name, is_pkg in pkgutil.iter_modules([str(package_path)]):
-    if not is_pkg and module_name != "__init__":
-        full_module_name = f"{package_name}.{module_name}"
-        if full_module_name not in globals():
-            try:
-                importlib.import_module(full_module_name)
-            except ImportError as e:
-                print(f"[models] Skipped {module_name}: {e}")
-
+# --- Explicit imports (required for Flask-Migrate) ---
+from app.models.user import User
 
 # --- Collect model names for __all__ ---
 __all__ = [
-    # 'User',
-    # 'FreelancerProfile',
-    # 'Skill',
-    # 'FreelancerSkill',
-    # 'Project',
-    # 'ProjectSkill',
-    # 'Deliverable',
-    # 'Feedback',
-    # 'EscrowTransaction',
-    # 'PortfolioItem',
-    # 'Notification',
-    # 'Review',
-    # 'ActivityLog'
+    "User",
+    "FreelancerProfile",
+    'Skill',
+    'FreelancerSkill',
+    "Project",
+    'ProjectSkill',
+    "Deliverable",
+    "Feedback",
+    "EscrowTransaction",
+    "PortfolioItem",
+    "Notification",
+    "Review",
+    "ActivityLog",
+    "Invoice",
 ]
