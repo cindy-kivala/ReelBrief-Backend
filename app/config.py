@@ -20,8 +20,17 @@ class Config:
     SENDGRID_FROM_NAME = os.getenv("SENDGRID_FROM_NAME", "ReelBrief Notifications")
     BASE_URL = os.getenv("BASE_URL", "http://localhost:5174")  # Frontend for verify links
 
-    # CORS (frontends allowed)
-    FRONTEND_URLS = os.getenv(
-        "FRONTEND_URLS",
-        "http://localhost:5173,http://localhost:5174,https://reelbrief-frontend.vercel.app"
-    )
+    # Cloudinary
+    CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+    CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
+    CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+
+    # CORS / Frontend
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    FRONTEND_URLS = os.getenv("FRONTEND_URLS", "http://localhost:5173")
+
+    # Pagination
+    DEFAULT_PAGE_SIZE = 20
+    MAX_PAGE_SIZE = 100
+
+    STRICT_SLASHES = False

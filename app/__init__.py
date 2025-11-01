@@ -18,15 +18,19 @@ from app.utils.jwt_handlers import register_jwt_error_handlers
 
 def create_app(config_class=Config):
     """Application factory pattern for ReelBrief."""
+
+    #  Load Environment Variables
     load_dotenv()
 
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Health
+    app.url_map.strict_slashes = False
+
+    #  Health Check Route 
     @app.route("/")
     def home():
-        return jsonify({"message": "🎬 ReelBrief API is live!"}), 200
+        return jsonify({"message": "ReelBrief API is live!"}), 200
 
     # Serve uploads (CVs)
     @app.route("/uploads/<filename>")
@@ -63,12 +67,13 @@ def create_app(config_class=Config):
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
-    app.register_blueprint(deliverable_bp, url_prefix="/api/deliverables")
+    # app.register_blueprint(project_bp, url_prefix="/api/projects")
+    app.register_blueprint(deliverable_bp, url_prefix="/api/deliverable")
     app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
     app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
     # app.register_blueprint(project_bp, url_prefix="/api/projects")
 
-    # Swagger
+    #  Swagger Documentation 
     swagger_config = {
         "headers": [],
         "specs": [{"endpoint": "apispec", "route": "/apispec.json", "rule_filter": lambda r: True, "model_filter": lambda t: True}],
@@ -78,7 +83,7 @@ def create_app(config_class=Config):
     }
     swagger_template = {
         "info": {
-            "title": "🎬 ReelBrief API",
+            "title": "ReelBrief API",
             "version": "1.0",
             "description": "Backend API for the ReelBrief Creative Management Platform.",
             "contact": {"name": "ReelBrief Dev Team", "email": "support@reelbrief.com"},
@@ -87,11 +92,12 @@ def create_app(config_class=Config):
     }
     Swagger(app, config=swagger_config, template=swagger_template)
 
-    # Ensure uploads dir exists
-    os.makedirs(os.path.join(os.getcwd(), "uploads"), exist_ok=True)
+    #  Return Configured App 
+    with app.app_context():
+        print("\n=== Registered Routes ===")
+        for rule in app.url_map.iter_rules():
+            print(f"{rule.endpoint}: {rule.rule} {list(rule.methods - {'OPTIONS', 'HEAD'})}")
+        print("========================\n")
 
-    # Log DB (sanitized)
-    db_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
-    app.logger.info(f"🔌 DB in use → {db_uri.split('@')[-1] if '@' in db_uri else db_uri}")
-
+    
     return app

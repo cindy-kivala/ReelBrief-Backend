@@ -3,7 +3,7 @@ from app.extensions import db
 # from app.models import *  # Import all models for migrations
 from app.models.user import User
 from app.models.deliverable import Deliverable
-# from app.models.feedback import Feedback
+from app.models.feedback import Feedback
 
 
 # from app.models.project import Project
@@ -28,7 +28,7 @@ def make_shell_context():
         # "Skill": Skill,
         # "Project": Project,
         "Deliverable": Deliverable,
-        # "Feedback": Feedback,
+        "Feedback": Feedback,
         # "EscrowTransaction": EscrowTransaction,
         # "PortfolioItem": PortfolioItem,
         # "Notification": Notification,
