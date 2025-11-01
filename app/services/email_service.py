@@ -184,3 +184,45 @@ def send_deliverable_feedback_notification(deliverable, feedback, client) -> boo
         return False
     return send_email(to_email, f"Feedback: {deliverable.title}", html, from_name="ReelBrief Feedback")
 
+
+def send_login_notification_email(user) -> bool:
+    """Send a notification email when a user logs in successfully."""
+    from datetime import datetime
+    login_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h3 style="color:#17545B;">Successful Login</h3>
+        <p>Hello <strong>{user.first_name or user.email}</strong>,</p>
+        <p>You just logged in to your ReelBrief account on <strong>{login_time}</strong>.</p>
+        <p>If this wasn’t you, please reset your password immediately.</p>
+        <p style="margin:24px 0;">
+            <a href="{BASE_URL}/reset-password" 
+               style="background:#c0392b;color:#fff;padding:10px 18px;text-decoration:none;border-radius:6px;">
+               Reset Password
+            </a>
+        </p>
+        <p style="font-size:12px; color:#777;">This is an automated message from ReelBrief Security.</p>
+    </div>
+    """
+
+    return send_email(
+        user.email,
+        "Login Alert - ReelBrief Account",
+        html,
+        from_name="ReelBrief Security"
+    )
+
+def send_confirmation_email(user):
+    """Sends a confirmation email after successful registration."""
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h3 style="color:#17545B;">Welcome to ReelBrief!</h3>
+        <p>Hi <strong>{user.first_name}</strong>,</p>
+        <p>Thank you for registering with ReelBrief. Your account is now active and ready to use.</p>
+        <p>You can log in anytime to start exploring opportunities.</p>
+        <br>
+        <p style="color:#888;">— The ReelBrief Team</p>
+    </div>
+    """
+    return send_email(user.email, "Welcome to ReelBrief!", html, from_name="ReelBrief Notifications")
