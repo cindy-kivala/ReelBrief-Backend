@@ -11,29 +11,32 @@ from app.models.user import User
 
 dashboard_bp = Blueprint("dashboard_bp", __name__, url_prefix="/api/dashboard")
 
+
 def get_user_info():
     """Helper function to get user ID and role from JWT token"""
     current_user = get_jwt_identity()
-    
+
     if isinstance(current_user, dict):
-        user_id = current_user.get('id')
-        role = current_user.get('role')
+        user_id = current_user.get("id")
+        role = current_user.get("role")
     else:
         # If it's just an ID, get the user from database
         user_id = current_user
         user = User.query.get(user_id)
         role = user.role if user else None
-    
+
     return user_id, role
+
 
 @dashboard_bp.route("/stats", methods=["GET"])
 @jwt_required()
 def get_stats():
     user_id, role = get_user_info()
-    
+
     if not role:
         return jsonify({"error": "Could not determine user role"}), 400
 
+    # === ADMIN DASHBOARD ===
     if role == "admin":
         total_projects = Project.query.count()
         total_users = User.query.count()
@@ -47,59 +50,78 @@ def get_stats():
             {"label": "In Escrow", "value": escrow_in_escrow, "color": "purple"},
         ]
         return jsonify(stats), 200
-    
+
+    # === CLIENT DASHBOARD ===
     elif role == "client":
-        # Client-specific stats
-        total_projects = Project.query.filter_by(client_id=user_id).count()
-        active_projects = Project.query.filter_by(client_id=user_id, status='active').count()
-        completed_projects = Project.query.filter_by(client_id=user_id, status='completed').count()
-        pending_approval = Project.query.filter_by(client_id=user_id, status='pending_approval').count()
-        
-        # Calculate total spent from escrow transactions
-        total_spent_result = EscrowTransaction.query.filter_by(
-            client_id=user_id, 
-            status='released'
-        ).with_entities(func.sum(EscrowTransaction.amount)).scalar()
-        total_spent = float(total_spent_result) if total_spent_result else 0
-        
+        active_projects = Project.query.filter_by(client_id=user_id, status="active").count()
+        completed_projects = Project.query.filter_by(client_id=user_id, status="completed").count()
+        pending_approval = Project.query.filter_by(
+            client_id=user_id, status="pending_approval"
+        ).count()
+
+        # Total spent: sum of all released or held escrows sent by this client
+        total_spent = (
+            db.session.query(func.sum(EscrowTransaction.amount))
+            .filter(
+                EscrowTransaction.sender_id == user_id,
+                EscrowTransaction.status.in_(["held", "released"]),
+            )
+            .scalar()
+        )
+        total_spent = float(total_spent or 0)
+
         stats = {
             "active_projects": active_projects,
             "pending_approval": pending_approval,
             "completed_projects": completed_projects,
-            "total_spent": total_spent
+            "total_spent": total_spent,
         }
         return jsonify(stats), 200
-    
+
+    # === FREELANCER DASHBOARD ===
     elif role == "freelancer":
-        # Freelancer-specific stats
-        total_projects = Project.query.filter_by(freelancer_id=user_id).count()
-        active_projects = Project.query.filter_by(freelancer_id=user_id, status='active').count()
-        completed_projects = Project.query.filter_by(freelancer_id=user_id, status='completed').count()
-        pending_reviews = Project.query.filter_by(freelancer_id=user_id, status='pending_review').count()
-        
-        # Calculate total earned from escrow transactions
-        total_earned_result = EscrowTransaction.query.filter_by(
-            freelancer_id=user_id,
-            status='released'
-        ).with_entities(func.sum(EscrowTransaction.amount)).scalar()
-        total_earned = float(total_earned_result) if total_earned_result else 0
-        
+        active_projects = Project.query.filter_by(freelancer_id=user_id, status="active").count()
+        completed_projects = Project.query.filter_by(
+            freelancer_id=user_id, status="completed"
+        ).count()
+        pending_reviews = Project.query.filter_by(
+            freelancer_id=user_id, status="pending_review"
+        ).count()
+
+        # Total earned: sum of all released escrows received by this freelancer
+        total_earned = (
+            db.session.query(func.sum(EscrowTransaction.amount))
+            .filter(
+                EscrowTransaction.receiver_id == user_id, EscrowTransaction.status == "released"
+            )
+            .scalar()
+        )
+        total_earned = float(total_earned or 0)
+
+        # Optional: include wallet balance
+        from app.models.wallet import Wallet
+
+        wallet = Wallet.query.filter_by(user_id=user_id).first()
+        wallet_balance = float(wallet.balance) if wallet else 0.0
+
         stats = {
             "active_projects": active_projects,
             "pending_reviews": pending_reviews,
             "completed_projects": completed_projects,
-            "total_earned": total_earned
+            "total_earned": total_earned,
+            "wallet_balance": wallet_balance,
         }
         return jsonify(stats), 200
-    
+
     else:
         return jsonify({"error": "Unauthorized"}), 403
+
 
 @dashboard_bp.route("/recent-projects", methods=["GET"])
 @jwt_required()
 def recent_projects():
     user_id, role = get_user_info()
-    
+
     if not role:
         return jsonify({"error": "Could not determine user role"}), 400
 
@@ -126,69 +148,83 @@ def recent_projects():
     projects_data = []
     for project in projects:
         project_dict = project.to_dict()
-        
+
         # Ensure consistent field names for frontend
-        if 'client' in project_dict and 'name' in project_dict['client']:
-            project_dict['client_name'] = project_dict['client']['name']
-        if 'freelancer' in project_dict and 'name' in project_dict['freelancer']:
-            project_dict['freelancer_name'] = project_dict['freelancer']['name']
-        
+        if "client" in project_dict and "name" in project_dict["client"]:
+            project_dict["client_name"] = project_dict["client"]["name"]
+        if "freelancer" in project_dict and "name" in project_dict["freelancer"]:
+            project_dict["freelancer_name"] = project_dict["freelancer"]["name"]
+
         projects_data.append(project_dict)
 
     return jsonify(projects_data), 200
+
 
 @dashboard_bp.route("/transactions", methods=["GET"])
 @jwt_required()
 def recent_transactions():
     user_id, role = get_user_info()
-    
+
     if not role:
         return jsonify({"error": "Could not determine user role"}), 400
 
+    # Admin: see all transactions
     if role == "admin":
         txs = EscrowTransaction.query.order_by(EscrowTransaction.held_at.desc()).limit(5).all()
+
+    # Client: show transactions where they are the sender
     elif role == "client":
         txs = (
-            EscrowTransaction.query.filter_by(client_id=user_id)
+            EscrowTransaction.query.filter_by(sender_id=user_id)
             .order_by(EscrowTransaction.held_at.desc())
             .limit(5)
             .all()
         )
+
+    # Freelancer: show transactions where they are the receiver
     elif role == "freelancer":
         txs = (
-            EscrowTransaction.query.filter_by(freelancer_id=user_id)
+            EscrowTransaction.query.filter_by(receiver_id=user_id)
             .order_by(EscrowTransaction.held_at.desc())
             .limit(5)
             .all()
         )
+
     else:
         return jsonify({"error": "Unauthorized"}), 403
 
     return jsonify([t.to_dict() for t in txs]), 200
 
+
 @dashboard_bp.route("/activity", methods=["GET"])
 @jwt_required()
 def get_activity():
     user_id, role = get_user_info()
-    
+
     if not role:
         return jsonify({"error": "Could not determine user role"}), 400
 
     if role == "admin":
         activities = ActivityLog.query.order_by(ActivityLog.created_at.desc()).limit(10).all()
     else:
-        activities = ActivityLog.query.filter_by(user_id=user_id).order_by(ActivityLog.created_at.desc()).limit(10).all()
-    
+        activities = (
+            ActivityLog.query.filter_by(user_id=user_id)
+            .order_by(ActivityLog.created_at.desc())
+            .limit(10)
+            .all()
+        )
+
     return jsonify([activity.to_dict() for activity in activities]), 200
+
 
 @dashboard_bp.route("/revenue", methods=["GET"])
 @jwt_required()
 def get_revenue_data():
     user_id, role = get_user_info()
-    
+
     if not role:
         return jsonify({"error": "Could not determine user role"}), 400
-        
+
     if role != "admin":
         return jsonify({"error": "Unauthorized"}), 403
 
@@ -205,8 +241,18 @@ def get_revenue_data():
     )
 
     month_names = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
     ]
     revenue_data = [{"month": month_names[i], "revenue": 0.0} for i in range(12)]
     for row in monthly_revenue:

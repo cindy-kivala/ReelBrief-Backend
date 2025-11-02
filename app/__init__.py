@@ -5,6 +5,7 @@ Description: Initializes the Flask app with proper CORS, SendGrid, JWT, DB, and 
 """
 
 import os
+
 from dotenv import load_dotenv
 from flasgger import Swagger
 from flask import Flask, jsonify, request
@@ -12,7 +13,7 @@ from flask_cors import CORS
 from sendgrid import SendGridAPIClient
 
 from app.config import Config
-from app.extensions import init_extensions, db, migrate, jwt, ma, mail
+from app.extensions import db, init_extensions, jwt, ma, mail, migrate
 from app.utils.error_handlers import register_error_handlers
 from app.utils.jwt_handlers import register_jwt_error_handlers
 
@@ -31,7 +32,7 @@ def create_app(config_class=Config):
     init_extensions(app)
 
     # ✅ Initialize SendGrid client globally
-   
+
     # Health Check Route
     @app.route("/")
     def home():
@@ -57,28 +58,29 @@ def create_app(config_class=Config):
 
     # ✅ Ensure all models are imported and relationships configured
     with app.app_context():
-        from app.models.user import User
-        from app.models.project import Project
         from app.models.deliverable import Deliverable
         from app.models.feedback import Feedback
         from app.models.freelancer import Freelancer
+        from app.models.project import Project
         from app.models.review import Review
+        from app.models.user import User
 
         db.create_all()
 
     # ✅ Register Blueprints
+    from app.resources.activity_resource import activity_bp
     from app.resources.auth_resource import auth_bp
     from app.resources.dashboard_resource import dashboard_bp
     from app.resources.deliverable_resource import deliverable_bp
     from app.resources.escrow_resource import escrow_bp
     from app.resources.feedback_resource import feedback_bp
-    from app.resources.invoice_resource import invoice_bp
-    from app.resources.review_resource import review_bp
-    from app.resources.user_resource import user_bp
-    from app.resources.skills_resource import skills_bp
-    from app.resources.project_resource import project_bp
-    from app.resources.activity_resource import activity_bp
     from app.resources.freelancer_resource import freelancer_bp
+    from app.resources.invoice_resource import invoice_bp
+    from app.resources.project_resource import project_bp
+    from app.resources.review_resource import review_bp
+    from app.resources.skills_resource import skills_bp
+    from app.resources.user_resource import user_bp
+    from app.resources.wallet_resource import wallet_bp
     from app.routes.test_notifications import test_bp
 
     blueprints = [
@@ -94,6 +96,7 @@ def create_app(config_class=Config):
         (review_bp, "/api/reviews"),
         (activity_bp, "/api/activity"),
         (skills_bp, "/api"),
+        (wallet_bp, "/api/wallet"),
         (test_bp, "/api"),
     ]
     for bp, prefix in blueprints:
@@ -123,7 +126,9 @@ def create_app(config_class=Config):
         origin = request.headers.get("Origin")
         if origin in frontend_urls:
             response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Methods"] = (
+                "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            )
             response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Max-Age"] = "3600"

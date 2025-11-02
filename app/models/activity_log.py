@@ -55,23 +55,25 @@ Description: Tracks all important actions in the system for auditing.
 #         }
 
 
-from app import db
 from datetime import datetime
 
+from app import db
+
+
 class ActivityLog(db.Model):
-    __tablename__ = 'activity_logs'
-    
+    __tablename__ = "activity_logs"
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     action = db.Column(db.String(100), nullable=False)
     resource_type = db.Column(db.String(50), nullable=False)
     resource_id = db.Column(db.Integer, nullable=True)
     details = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # Add relationship to User
-    user = db.relationship('User', backref='activity_logs', lazy='joined')
-    
+    user = db.relationship("User", backref="activity_logs", lazy="joined")
+
     def to_dict(self):
         return {
             "id": self.id,

@@ -6,9 +6,10 @@ Uses SendGrid via app.extensions.sg
 """
 
 import os
+
+from flask import current_app
 from itsdangerous import URLSafeTimedSerializer
 from sendgrid.helpers.mail import From, Mail
-from flask import current_app
 
 from app.extensions import sg
 
@@ -39,7 +40,9 @@ def send_email(recipient: str, subject: str, html_content: str, from_name: str =
         status = response.status_code
         current_app.logger.info(f"Email to {recipient} | Status: {status}")
         if status not in (200, 202):
-            current_app.logger.warning(f"SendGrid non-2xx ({status}): {getattr(response, 'body', '')}")
+            current_app.logger.warning(
+                f"SendGrid non-2xx ({status}): {getattr(response, 'body', '')}"
+            )
         return status in (200, 202)
     except Exception as e:
         current_app.logger.error(f"SendGrid send failed: {e}")
@@ -90,8 +93,9 @@ def send_verification_email(email: str, user_id: int):
 def send_password_reset_email(user) -> bool:
     reset_link = f"{BASE_URL}/reset-password/{user.reset_token}"
     display_name = getattr(
-        user, "name",
-        f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip() or "there"
+        user,
+        "name",
+        f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip() or "there",
     )
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -109,7 +113,12 @@ def send_password_reset_email(user) -> bool:
 # (Kept for imports elsewhere)
 def send_project_assignment_email(project, freelancer) -> bool:
     project_link = f"{BASE_URL}/projects/{project.id}"
-    name = getattr(freelancer, 'name', f"{getattr(freelancer, 'first_name', '')} {getattr(freelancer, 'last_name', '')}".strip() or "there")
+    name = getattr(
+        freelancer,
+        "name",
+        f"{getattr(freelancer, 'first_name', '')} {getattr(freelancer, 'last_name', '')}".strip()
+        or "there",
+    )
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h3 style="color:#27ae60;">New Project Assigned!</h3>
@@ -118,7 +127,9 @@ def send_project_assignment_email(project, freelancer) -> bool:
         <p><a href="{project_link}" style="color:#3498db;">View Project →</a></p>
     </div>
     """
-    return send_email(freelancer.email, f"New Project: {project.title}", html, from_name="ReelBrief Assignments")
+    return send_email(
+        freelancer.email, f"New Project: {project.title}", html, from_name="ReelBrief Assignments"
+    )
 
 
 def send_payment_notification(transaction) -> bool:
@@ -137,7 +148,12 @@ def send_payment_notification(transaction) -> bool:
 def send_deliverable_approved_notification(deliverable, freelancer) -> bool:
     project_link = f"{BASE_URL}/projects/{deliverable.project_id}"
     deliverable_link = f"{BASE_URL}/deliverables/{deliverable.id}"
-    name = getattr(freelancer, 'name', f"{getattr(freelancer, 'first_name', '')} {getattr(freelancer, 'last_name', '')}".strip() or "there")
+    name = getattr(
+        freelancer,
+        "name",
+        f"{getattr(freelancer, 'first_name', '')} {getattr(freelancer, 'last_name', '')}".strip()
+        or "there",
+    )
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h3 style="color:#27ae60;">Deliverable Approved!</h3>
@@ -151,15 +167,28 @@ def send_deliverable_approved_notification(deliverable, freelancer) -> bool:
         <p>Payment will be released shortly.</p>
     </div>
     """
-    return send_email(freelancer.email, f"Deliverable Approved: {deliverable.title}", html, from_name="ReelBrief Notifications")
+    return send_email(
+        freelancer.email,
+        f"Deliverable Approved: {deliverable.title}",
+        html,
+        from_name="ReelBrief Notifications",
+    )
 
 
 def send_deliverable_feedback_notification(deliverable, feedback, client) -> bool:
     project_link = f"{BASE_URL}/projects/{deliverable.project_id}"
     deliverable_link = f"{BASE_URL}/deliverables/{deliverable.id}"
-    status = "Revision requested" if getattr(feedback, "is_revision_request", False) else "Feedback received"
+    status = (
+        "Revision requested"
+        if getattr(feedback, "is_revision_request", False)
+        else "Feedback received"
+    )
     color = "#e67e22" if getattr(feedback, "is_revision_request", False) else "#3498db"
-    freelancer_email = getattr(deliverable, "freelancer_email", None) or getattr(feedback.user, "email", None) or getattr(client, "email", None)
+    freelancer_email = (
+        getattr(deliverable, "freelancer_email", None)
+        or getattr(feedback.user, "email", None)
+        or getattr(client, "email", None)
+    )
 
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -176,18 +205,21 @@ def send_deliverable_feedback_notification(deliverable, feedback, client) -> boo
     </div>
     """
 
-#     subject = f"Feedback: {deliverable.title} – {'Revision Needed' if feedback.is_revision_request else 'Review'}"
-#     return send_email(feedback.user.email, subject, html_content, from_name="ReelBrief Feedback")
+    #     subject = f"Feedback: {deliverable.title} – {'Revision Needed' if feedback.is_revision_request else 'Review'}"
+    #     return send_email(feedback.user.email, subject, html_content, from_name="ReelBrief Feedback")
     to_email = freelancer_email or getattr(client, "email", None)
     if not to_email:
         current_app.logger.warning(" No recipient email for deliverable feedback notification.")
         return False
-    return send_email(to_email, f"Feedback: {deliverable.title}", html, from_name="ReelBrief Feedback")
+    return send_email(
+        to_email, f"Feedback: {deliverable.title}", html, from_name="ReelBrief Feedback"
+    )
 
 
 def send_login_notification_email(user) -> bool:
     """Send a notification email when a user logs in successfully."""
     from datetime import datetime
+
     login_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
     html = f"""
@@ -207,11 +239,9 @@ def send_login_notification_email(user) -> bool:
     """
 
     return send_email(
-        user.email,
-        "Login Alert - ReelBrief Account",
-        html,
-        from_name="ReelBrief Security"
+        user.email, "Login Alert - ReelBrief Account", html, from_name="ReelBrief Security"
     )
+
 
 def send_confirmation_email(user):
     """Sends a confirmation email after successful registration."""
@@ -225,4 +255,94 @@ def send_confirmation_email(user):
         <p style="color:#888;">— The ReelBrief Team</p>
     </div>
     """
-    return send_email(user.email, "Welcome to ReelBrief!", html, from_name="ReelBrief Notifications")
+    return send_email(
+        user.email, "Welcome to ReelBrief!", html, from_name="ReelBrief Notifications"
+    )
+
+
+# ===========================
+# 📩  INVOICING + ESCROW EMAILS
+# ===========================
+
+
+def send_invoice_email(invoice, client):
+    """Notify client when admin sends an invoice."""
+    invoice_link = f"{BASE_URL}/invoices/{invoice.id}"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h3 style="color:#17545B;">New Invoice Issued</h3>
+        <p>Hi <strong>{client.first_name}</strong>,</p>
+        <p>An invoice has been issued for <strong>{invoice.project_title}</strong>.</p>
+        <p>Amount Due: <strong>${float(invoice.amount):.2f}</strong></p>
+        <p>Due Date: <strong>{invoice.due_date.strftime('%Y-%m-%d')}</strong></p>
+        <p>
+            <a href="{invoice_link}" 
+               style="background:#17545B;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px;">
+               View Invoice
+            </a>
+        </p>
+        <p style="font-size:12px; color:#777;">Please make payment before the due date.</p>
+    </div>
+    """
+    return send_email(client.email, f"Invoice for {invoice.project_title}", html)
+
+
+def send_payment_received_email(client, amount, project):
+    """Notify client and admin when payment is made."""
+    project_link = f"{BASE_URL}/projects/{project.id}"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h3 style="color:#27ae60;">Payment Received</h3>
+        <p>Hi <strong>{client.first_name}</strong>,</p>
+        <p>We’ve received your payment of <strong>${float(amount):.2f}</strong> for <strong>{project.title}</strong>.</p>
+        <p>Your funds are now held securely in escrow until project completion.</p>
+        <p>
+            <a href="{project_link}" style="color:#17545B; font-weight:600;">View Project →</a>
+        </p>
+    </div>
+    """
+    send_email(client.email, f"Payment Received - {project.title}", html)
+
+    # Also notify admin
+    admin_email = os.getenv("ADMIN_EMAIL", FROM_EMAIL)
+    send_email(admin_email, f"Client Payment Received - {project.title}", html)
+    return True
+
+
+def send_funds_released_email(freelancer, client, project, amount):
+    """Notify freelancer and client when funds are released."""
+    project_link = f"{BASE_URL}/projects/{project.id}"
+    html_freelancer = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h3 style="color:#27ae60;">Funds Released!</h3>
+        <p>Hi <strong>{freelancer.first_name}</strong>,</p>
+        <p>Your payment of <strong>${float(amount):.2f}</strong> for <strong>{project.title}</strong> has been released to your wallet.</p>
+        <p><a href="{project_link}" style="color:#17545B; font-weight:600;">View Project →</a></p>
+    </div>
+    """
+    html_client = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h3 style="color:#17545B;">Project Completed & Funds Released</h3>
+        <p>Hi <strong>{client.first_name}</strong>,</p>
+        <p>Your payment for <strong>{project.title}</strong> has been released to the freelancer.</p>
+        <p><a href="{project_link}" style="color:#17545B; font-weight:600;">View Project →</a></p>
+    </div>
+    """
+    send_email(freelancer.email, f"Funds Released - {project.title}", html_freelancer)
+    send_email(client.email, f"Payment Released - {project.title}", html_client)
+    return True
+
+
+def send_refund_email(client, amount, project):
+    """Notify client when refund is processed."""
+    project_link = f"{BASE_URL}/projects/{project.id}"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h3 style="color:#e67e22;">Refund Processed</h3>
+        <p>Hi <strong>{client.first_name}</strong>,</p>
+        <p>Your refund of <strong>${float(amount):.2f}</strong> for <strong>{project.title}</strong> has been processed successfully.</p>
+        <p>Funds have been returned to your wallet.</p>
+        <p><a href="{project_link}" style="color:#17545B; font-weight:600;">View Project →</a></p>
+    </div>
+    """
+    return send_email(client.email, f"Refund Processed - {project.title}", html)

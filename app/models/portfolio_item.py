@@ -32,7 +32,7 @@ class PortfolioItem(db.Model):
 
     freelancer = db.relationship("User", back_populates="portfolio_items")
     freelancer = db.relationship("User", back_populates="portfolio_items")
-    project = db.relationship('Project', back_populates='portfolio_items')
+    project = db.relationship("Project", back_populates="portfolio_items")
 
     def __repr__(self):
         return f"<PortfolioItem {self.id} {self.title} Project:{self.project_id}>"

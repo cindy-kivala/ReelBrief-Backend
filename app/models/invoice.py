@@ -5,6 +5,7 @@ Description: Represents an official payment request between freelancer/agency an
 """
 
 from datetime import datetime
+
 from app.extensions import db
 
 
@@ -22,14 +23,20 @@ class Invoice(db.Model):
     issue_date = db.Column(db.DateTime, default=datetime.utcnow)
     due_date = db.Column(db.DateTime, nullable=True)
     paid_at = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(20), default="unpaid", nullable=False)  # unpaid, paid, overdue, cancelled
+    status = db.Column(
+        db.String(20), default="unpaid", nullable=False
+    )  # unpaid, paid, overdue, cancelled
 
     pdf_url = db.Column(db.String(255), nullable=True)
     notes = db.Column(db.Text, nullable=True)
 
-    # Optional link to EscrowTransaction
-    escrow_id = db.Column(db.Integer, db.ForeignKey("escrow_transactions.id"), nullable=True)
-    escrow = db.relationship("EscrowTransaction", backref="invoice", uselist=False)
+    # ✅ Relationship to EscrowTransaction (one-to-one)
+    escrow_transaction = db.relationship(
+        "EscrowTransaction",
+        back_populates="invoice",
+        uselist=False,
+        foreign_keys="EscrowTransaction.invoice_id",
+    )
 
     # Relationships to users
     client = db.relationship("User", foreign_keys=[client_id], lazy="joined")
@@ -54,15 +61,22 @@ class Invoice(db.Model):
             "status": self.status,
             "pdf_url": self.pdf_url,
             "notes": self.notes,
-            # ✅ Include readable freelancer + client names
-            "freelancer": {
-                "id": self.freelancer.id,
-                "name": f"{self.freelancer.first_name} {self.freelancer.last_name}",
-                "email": self.freelancer.email,
-            } if self.freelancer else None,
-            "client": {
-                "id": self.client.id,
-                "name": f"{self.client.first_name} {self.client.last_name}",
-                "email": self.client.email,
-            } if self.client else None,
+            "freelancer": (
+                {
+                    "id": self.freelancer.id,
+                    "name": f"{self.freelancer.first_name} {self.freelancer.last_name}",
+                    "email": self.freelancer.email,
+                }
+                if self.freelancer
+                else None
+            ),
+            "client": (
+                {
+                    "id": self.client.id,
+                    "name": f"{self.client.first_name} {self.client.last_name}",
+                    "email": self.client.email,
+                }
+                if self.client
+                else None
+            ),
         }

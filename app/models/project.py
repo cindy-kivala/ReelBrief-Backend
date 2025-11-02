@@ -5,6 +5,7 @@ Description: Project management with status tracking, deliverables, and skill re
 """
 
 from datetime import datetime
+
 from ..extensions import db
 
 
@@ -23,7 +24,9 @@ class Project(db.Model):
     freelancer_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    status = db.Column(db.String(50), default="submitted")  # submitted, in_progress, completed, etc.
+    status = db.Column(
+        db.String(50), default="submitted"
+    )  # submitted, in_progress, completed, etc.
     budget = db.Column(db.Numeric(10, 2), nullable=True)
     deadline = db.Column(db.DateTime, nullable=True)
     is_sensitive = db.Column(db.Boolean, default=False)
@@ -59,9 +62,13 @@ class Project(db.Model):
     # escrow_transaction = db.relationship("EscrowTransaction", backref="project", uselist=False)
 
     # Placeholder one-to-one relationships (for future expansion)
-    deliverables = db.relationship('Deliverable', back_populates='project', lazy=True)
-    escrow_transactions = db.relationship('EscrowTransaction', back_populates='project', cascade='all, delete-orphan')
-    portfolio_items = db.relationship('PortfolioItem', back_populates='project', cascade='all, delete-orphan')
+    deliverables = db.relationship("Deliverable", back_populates="project", lazy=True)
+    escrow_transactions = db.relationship(
+        "EscrowTransaction", back_populates="project", cascade="all, delete-orphan"
+    )
+    portfolio_items = db.relationship(
+        "PortfolioItem", back_populates="project", cascade="all, delete-orphan"
+    )
 
     # -------------------- Methods --------------------
     def to_dict(self):
@@ -80,7 +87,9 @@ class Project(db.Model):
             "payment_status": self.payment_status,
             "project_type": self.project_type,
             "priority": self.priority,
-            "created_at": self.created_at.isoformat() if self.created_at else None,  # Caleb's format
+            "created_at": (
+                self.created_at.isoformat() if self.created_at else None
+            ),  # Caleb's format
             "matched_at": self.matched_at.isoformat() if self.matched_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
@@ -105,9 +114,8 @@ class Project(db.Model):
                 }
                 for d in self.deliverables
             ],
-
         }
- 
+
     def _calculate_progress(self):
         """Caleb's progress calculation"""
         if not self.deliverables:
@@ -119,7 +127,6 @@ class Project(db.Model):
     def __repr__(self):
         """Caleb's repr"""
         return f"<Project {self.id}: {self.title}>"
-
 
 
 # -------------------------------------------------------------------
@@ -140,9 +147,7 @@ class ProjectSkill(db.Model):
     project = db.relationship("Project", back_populates="required_skills")
     skill = db.relationship("Skill")  # Disabled until Skill model is active
 
-    __table_args__ = (
-        db.UniqueConstraint("project_id", "skill_id", name="uq_project_skill"),
-    )
+    __table_args__ = (db.UniqueConstraint("project_id", "skill_id", name="uq_project_skill"),)
 
     def to_dict(self):
         """Serialize ProjectSkill to dict."""
@@ -152,5 +157,3 @@ class ProjectSkill(db.Model):
             "skill_id": self.skill_id,
             "required_proficiency": self.required_proficiency,
         }
-
-

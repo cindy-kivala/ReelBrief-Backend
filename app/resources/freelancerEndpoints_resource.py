@@ -1,5 +1,6 @@
 # app/routes/freelancer_routes.py
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
+
 from app.extensions import db
 from app.models.freelancer import Freelancer
 from app.schemas.freelancer_schema import FreelancerSchema
@@ -8,19 +9,22 @@ freelancer_bp = Blueprint("freelancer", __name__, url_prefix="/api/freelancers")
 schema = FreelancerSchema()
 schema_many = FreelancerSchema(many=True)
 
+
 # GET pending freelancers (for admin)
 @freelancer_bp.route("/pending", methods=["GET"])
 def get_pending_freelancers():
     freelancers = Freelancer.query.filter_by(application_status="pending").all()
     return jsonify({"success": True, "freelancers": schema_many.dump(freelancers)})
 
-# GET all freelancers (for clients) 
+
+# GET all freelancers (for clients)
 @freelancer_bp.route("/", methods=["GET"])
 def get_all_freelancers():
     freelancers = Freelancer.query.all()
     return jsonify({"success": True, "freelancers": schema_many.dump(freelancers)})
 
-#  POST: submit vetting documents 
+
+#  POST: submit vetting documents
 @freelancer_bp.route("/submit", methods=["POST"])
 def submit_freelancer():
     data = request.form
@@ -48,20 +52,22 @@ def submit_freelancer():
         years_experience=years_experience,
         hourly_rate=hourly_rate,
         cv_url=cv_url,
-        portfolio_url=portfolio_url
+        portfolio_url=portfolio_url,
     )
     db.session.add(freelancer)
     db.session.commit()
 
     return jsonify({"success": True, "freelancer": schema.dump(freelancer)})
 
-#  PATCH approve freelancer 
+
+#  PATCH approve freelancer
 @freelancer_bp.route("/<int:id>/approve", methods=["PATCH"])
 def approve_freelancer(id):
     freelancer = Freelancer.query.get_or_404(id)
     freelancer.application_status = "approved"
     db.session.commit()
     return jsonify({"success": True, "freelancer": schema.dump(freelancer)})
+
 
 # PATCH reject freelancer
 @freelancer_bp.route("/<int:id>/reject", methods=["PATCH"])

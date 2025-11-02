@@ -5,6 +5,7 @@ Description: Client feedback with priority levels and threaded comments
 """
 
 from datetime import datetime
+
 from app.extensions import db
 from app.models.deliverable import Deliverable  # Direct import — breaks circular dependency
 from app.models.user import User  # Import only what’s needed
@@ -98,15 +99,11 @@ class Feedback(db.Model):
 
     @staticmethod
     def get_feedback_for_deliverable(deliverable_id, include_resolved=True):
-        query = Feedback.query.filter_by(
-            deliverable_id=deliverable_id, parent_feedback_id=None
-        )
+        query = Feedback.query.filter_by(deliverable_id=deliverable_id, parent_feedback_id=None)
         if not include_resolved:
             query = query.filter_by(is_resolved=False)
         return query.order_by(Feedback.created_at.desc()).all()
 
     @staticmethod
     def get_unresolved_count(deliverable_id):
-        return Feedback.query.filter_by(
-            deliverable_id=deliverable_id, is_resolved=False
-        ).count()
+        return Feedback.query.filter_by(deliverable_id=deliverable_id, is_resolved=False).count()

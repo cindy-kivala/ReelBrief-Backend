@@ -10,7 +10,7 @@ import secrets
 import traceback
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, request, current_app, send_from_directory
+from flask import Blueprint, current_app, jsonify, request, send_from_directory
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -22,8 +22,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from app.extensions import db
 from app.models import User
 from app.services.email_service import (
+    send_confirmation_email,
+)  # ✅ use this new simplified function
+from app.services.email_service import (
     send_password_reset_email,
-    send_confirmation_email,  # ✅ use this new simplified function
 )
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
@@ -33,6 +35,7 @@ auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 @auth_bp.route("/")
 def home():
     return jsonify({"message": "Auth routes online"}), 200
+
 
 @auth_bp.route("/test")
 def test():
@@ -76,16 +79,18 @@ def register():
         if file and user.role == "freelancer":
             current_app.logger.info(f"Processing CV for freelancer: {file.filename}")
 
-            allowed_extensions = {'pdf', 'doc', 'docx'}
-            file_ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+            allowed_extensions = {"pdf", "doc", "docx"}
+            file_ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
             if file_ext not in allowed_extensions:
                 return jsonify({"error": "Only PDF, DOC, and DOCX files are allowed"}), 400
 
-            upload_dir = os.path.join(current_app.root_path, 'uploads')
+            upload_dir = os.path.join(current_app.root_path, "uploads")
             os.makedirs(upload_dir, exist_ok=True)
 
             import uuid
+
             from werkzeug.utils import secure_filename
+
             filename = secure_filename(file.filename)
             unique_filename = f"{uuid.uuid4().hex}_{filename}"
             file_path = os.path.join(upload_dir, unique_filename)
@@ -93,6 +98,7 @@ def register():
 
             try:
                 from app.models.freelancer_profile import FreelancerProfile
+
                 profile = FreelancerProfile(
                     user_id=user.id,
                     name=f"{user.first_name} {user.last_name}",
@@ -104,7 +110,7 @@ def register():
                     open_to_work=True,
                     bio="",
                     hourly_rate=0.0,
-                    years_experience=0
+                    years_experience=0,
                 )
                 db.session.add(profile)
                 current_app.logger.info(f"Created FreelancerProfile for user {user.id}")
@@ -122,10 +128,15 @@ def register():
         except Exception as e:
             current_app.logger.error(f"❌ Failed to send confirmation email: {str(e)}")
 
-        return jsonify({
-            "message": "User registered successfully.",
-            "user": user.to_dict(),
-        }), 201
+        return (
+            jsonify(
+                {
+                    "message": "User registered successfully.",
+                    "user": user.to_dict(),
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -153,19 +164,18 @@ def login():
     # Send login notification email (optional)
     try:
         from app.services.email_service import send_login_notification_email
+
         send_login_notification_email(user)
     except Exception as e:
         current_app.logger.error(f"❌ Failed to send login email to {user.email}: {str(e)}")
 
     claims = {"role": user.role, "email": user.email}
-    access = create_access_token(identity=user, additional_claims=claims, expires_delta=timedelta(hours=3))
+    access = create_access_token(
+        identity=user, additional_claims=claims, expires_delta=timedelta(hours=3)
+    )
     refresh = create_refresh_token(identity=user)
 
-    return jsonify({
-        "user": user.to_dict(),
-        "access_token": access,
-        "refresh_token": refresh
-    }), 200
+    return jsonify({"user": user.to_dict(), "access_token": access, "refresh_token": refresh}), 200
 
 
 # -------------------- Refresh Token --------------------
@@ -179,7 +189,9 @@ def refresh():
             return jsonify({"error": "User not found"}), 404
 
         claims = {"role": user.role, "email": user.email}
-        new_access = create_access_token(identity=user, additional_claims=claims, expires_delta=timedelta(hours=3))
+        new_access = create_access_token(
+            identity=user, additional_claims=claims, expires_delta=timedelta(hours=3)
+        )
         return jsonify({"access_token": new_access}), 200
 
     except Exception as e:

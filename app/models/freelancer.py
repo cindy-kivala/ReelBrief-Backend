@@ -1,6 +1,8 @@
 # app/models/freelancer.py
 from datetime import datetime
+
 from app.extensions import db
+
 
 class Freelancer(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -7,12 +7,15 @@ Description: Upload files, track versions, manage deliverable lifecycle
 import os
 import re
 from datetime import datetime, timedelta
+
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.deliverable import Deliverable
+from app.models.escrow_transaction import EscrowTransaction
+from app.models.portfolio_item import PortfolioItem
 from app.models.project import Project
 from app.models.user import User
 from app.services.cloudinary_service import CloudinaryService
@@ -21,15 +24,14 @@ from app.services.email_service import (
     send_deliverable_feedback_notification,
     send_email,
 )
-from app.models.portfolio_item import PortfolioItem
-from app.models.escrow_transaction import EscrowTransaction
 from app.utils.decorators import role_required
 
 deliverable_bp = Blueprint("deliverables", __name__, url_prefix="/api/deliverables")
 
 # Constants
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt', 'zip', 'jpg', 'jpeg', 'png', 'mp4', 'mov', 'avi'}
+ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "txt", "zip", "jpg", "jpeg", "png", "mp4", "mov", "avi"}
+
 
 # Helper functions
 def validate_deliverable_data(title, description, change_notes):
@@ -40,8 +42,9 @@ def validate_deliverable_data(title, description, change_notes):
         raise ValueError("Description must be less than 2000 characters")
     if change_notes and len(change_notes) > 1000:
         raise ValueError("Change notes must be less than 1000 characters")
-    
+
     return title, description, change_notes
+
 
 def create_portfolio_item(project, deliverable):
     """Enhanced helper function to create portfolio item"""
@@ -51,7 +54,7 @@ def create_portfolio_item(project, deliverable):
         skills_used = project.tags
     elif project.required_skills:
         skills_used = [skill.name for skill in project.required_skills]
-    
+
     # Calculate project duration
     project_duration = "Not specified"
     if project.created_at and project.completed_at:
@@ -59,7 +62,7 @@ def create_portfolio_item(project, deliverable):
         project_duration = f"{duration_days} days"
     elif project.duration:
         project_duration = f"{project.duration} days"
-    
+
     return PortfolioItem(
         freelancer_id=project.freelancer_id,
         project_id=project.id,
@@ -73,19 +76,17 @@ def create_portfolio_item(project, deliverable):
         cover_image_url=deliverable.thumbnail_url or deliverable.file_url,
         project_url=f"/projects/{project.id}",
         completion_date=datetime.utcnow(),
-        tags=skills_used  # Add tags for better searchability
+        tags=skills_used,  # Add tags for better searchability
     )
+
 
 def error_response(message, status_code, details=None):
     """Create consistent error response format"""
-    response = {
-        "success": False,
-        "error": message,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    response = {"success": False, "error": message, "timestamp": datetime.utcnow().isoformat()}
     if details:
         response["details"] = details
     return jsonify(response), status_code
+
 
 @deliverable_bp.route("/projects/<int:project_id>", methods=["GET"])
 @jwt_required()
@@ -113,20 +114,26 @@ def get_project_deliverables(project_id):
 
         deliverables = [d.to_dict(include_feedback=False) for d in pagination.items]
 
-        return jsonify({
-            "success": True,
-            "deliverables": deliverables,
-            "pagination": {
-                "page": pagination.page,
-                "per_page": pagination.per_page,
-                "total_pages": pagination.pages,
-                "total_items": pagination.total,
-            },
-        }), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "deliverables": deliverables,
+                    "pagination": {
+                        "page": pagination.page,
+                        "per_page": pagination.per_page,
+                        "total_pages": pagination.pages,
+                        "total_items": pagination.total,
+                    },
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         current_app.logger.error(f"Error fetching deliverables: {str(e)}")
         return error_response("Failed to fetch deliverables", 500, str(e))
+
 
 @deliverable_bp.route("/freelancer/my-deliverables", methods=["GET"])
 @jwt_required()
@@ -134,33 +141,31 @@ def get_my_deliverables():
     """Get all deliverables uploaded by the current freelancer"""
     try:
         current_user_id = get_jwt_identity()
-        
+
         if not current_user_id:
             return error_response("Authentication required", 401)
-        
+
         # Fixed: Using join to avoid N+1 queries
-        deliverables = (Deliverable.query
-                .join(Project, Deliverable.project_id == Project.id)
-                .filter(Deliverable.uploaded_by == current_user_id)
-                .add_columns(Project.title)
-                .order_by(Deliverable.project_id, Deliverable.version_number.desc())
-                .all())
+        deliverables = (
+            Deliverable.query.join(Project, Deliverable.project_id == Project.id)
+            .filter(Deliverable.uploaded_by == current_user_id)
+            .add_columns(Project.title)
+            .order_by(Deliverable.project_id, Deliverable.version_number.desc())
+            .all()
+        )
 
         result = []
         for deliverable, project_title in deliverables:
             deliverable_dict = deliverable.to_dict(include_feedback=False)
-            deliverable_dict['project_title'] = project_title
+            deliverable_dict["project_title"] = project_title
             result.append(deliverable_dict)
-        
-        return jsonify({
-            "success": True,
-            "deliverables": result,
-            "total": len(result)
-        }), 200
-        
+
+        return jsonify({"success": True, "deliverables": result, "total": len(result)}), 200
+
     except Exception as e:
         current_app.logger.error(f"Error fetching freelancer deliverables: {str(e)}")
         return error_response("Failed to fetch deliverables", 500, str(e))
+
 
 @deliverable_bp.route("/<int:deliverable_id>", methods=["GET"])
 @jwt_required()
@@ -168,14 +173,15 @@ def get_deliverable(deliverable_id):
     """Get specific deliverable with metadata and feedback"""
     try:
         deliverable = Deliverable.query.get_or_404(deliverable_id)
-        return jsonify({
-            "success": True, 
-            "deliverable": deliverable.to_dict(include_feedback=True)
-        }), 200
+        return (
+            jsonify({"success": True, "deliverable": deliverable.to_dict(include_feedback=True)}),
+            200,
+        )
 
     except Exception as e:
         current_app.logger.error(f"Error fetching deliverable: {str(e)}")
         return error_response("Deliverable not found", 404, str(e))
+
 
 @deliverable_bp.route("/<int:deliverable_id>/download", methods=["GET"])
 @jwt_required()
@@ -183,26 +189,31 @@ def download_deliverable(deliverable_id):
     """Get secure download URL for deliverable"""
     try:
         deliverable = Deliverable.query.get_or_404(deliverable_id)
-        
+
         # Generate signed URL for secure download (expires in 1 hour)
         download_url = CloudinaryService.generate_download_url(
-            deliverable.cloudinary_public_id,
-            expires_in=3600  # 1 hour
+            deliverable.cloudinary_public_id, expires_in=3600  # 1 hour
         )
-        
+
         if not download_url:
             return error_response("Failed to generate download URL", 500)
-        
-        return jsonify({
-            "success": True,
-            "download_url": download_url,
-            "filename": f"{deliverable.title}_{deliverable.version_number}.{deliverable.file_type}",
-            "expires_at": (datetime.utcnow() + timedelta(hours=1)).isoformat()
-        }), 200
-        
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "download_url": download_url,
+                    "filename": f"{deliverable.title}_{deliverable.version_number}.{deliverable.file_type}",
+                    "expires_at": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
+                }
+            ),
+            200,
+        )
+
     except Exception as e:
         current_app.logger.error(f"Error generating download URL: {str(e)}")
         return error_response("Failed to generate download URL", 500, str(e))
+
 
 @deliverable_bp.route("", methods=["POST"])
 @jwt_required()
@@ -226,7 +237,9 @@ def create_deliverable():
         file.seek(0)  # Reset file pointer
 
         if file_size > MAX_FILE_SIZE:
-            return error_response(f"File size exceeds maximum limit of {MAX_FILE_SIZE // (1024*1024)}MB", 400)
+            return error_response(
+                f"File size exceeds maximum limit of {MAX_FILE_SIZE // (1024*1024)}MB", 400
+            )
 
         project_id = request.form.get("project_id", type=int)
         title = request.form.get("title", "")
@@ -235,18 +248,22 @@ def create_deliverable():
 
         if not project_id:
             return error_response("Project ID is required", 400)
-        
+
         # Input validation
         try:
-            title, description, change_notes = validate_deliverable_data(title, description, change_notes)
+            title, description, change_notes = validate_deliverable_data(
+                title, description, change_notes
+            )
         except ValueError as ve:
             return error_response(str(ve), 400)
-        
-        if not all([
-            os.getenv("CLOUDINARY_CLOUD_NAME"),
-            os.getenv("CLOUDINARY_API_KEY"),
-            os.getenv("CLOUDINARY_API_SECRET")
-        ]):
+
+        if not all(
+            [
+                os.getenv("CLOUDINARY_CLOUD_NAME"),
+                os.getenv("CLOUDINARY_API_KEY"),
+                os.getenv("CLOUDINARY_API_SECRET"),
+            ]
+        ):
             current_app.logger.error("Cloudinary credentials missing!")
             return error_response("File upload service not configured", 500)
 
@@ -319,16 +336,22 @@ def create_deliverable():
         except Exception as email_error:
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
 
-        return jsonify({
-            "success": True,
-            "message": "Deliverable uploaded successfully",
-            "deliverable": deliverable.to_dict(),
-        }), 201
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Deliverable uploaded successfully",
+                    "deliverable": deliverable.to_dict(),
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error creating deliverable: {str(e)}")
         return error_response("Failed to create deliverable", 500, str(e))
+
 
 @deliverable_bp.route("/<int:deliverable_id>", methods=["PATCH"])
 @jwt_required()
@@ -360,16 +383,22 @@ def update_deliverable(deliverable_id):
 
         db.session.commit()
 
-        return jsonify({
-            "success": True,
-            "message": "Deliverable updated successfully",
-            "deliverable": deliverable.to_dict(),
-        }), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Deliverable updated successfully",
+                    "deliverable": deliverable.to_dict(),
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error updating deliverable: {str(e)}")
         return error_response("Failed to update deliverable", 500, str(e))
+
 
 @deliverable_bp.route("/<int:deliverable_id>", methods=["DELETE"])
 @jwt_required()
@@ -380,22 +409,18 @@ def delete_deliverable(deliverable_id):
         deliverable = Deliverable.query.get_or_404(deliverable_id)
 
         if deliverable.cloudinary_public_id:
-            CloudinaryService.delete_file(
-                deliverable.cloudinary_public_id, resource_type="image"
-            )
+            CloudinaryService.delete_file(deliverable.cloudinary_public_id, resource_type="image")
 
         db.session.delete(deliverable)
         db.session.commit()
 
-        return jsonify({
-            "success": True, 
-            "message": "Deliverable deleted successfully"
-        }), 200
+        return jsonify({"success": True, "message": "Deliverable deleted successfully"}), 200
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting deliverable: {str(e)}")
         return error_response("Failed to delete deliverable", 500, str(e))
+
 
 @deliverable_bp.route("/<int:deliverable_id>/versions", methods=["GET"])
 @jwt_required()
@@ -411,15 +436,21 @@ def get_deliverable_versions(deliverable_id):
             .all()
         )
 
-        return jsonify({
-            "success": True,
-            "versions": [v.to_dict(include_feedback=False) for v in versions],
-            "total_versions": len(versions),
-        }), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "versions": [v.to_dict(include_feedback=False) for v in versions],
+                    "total_versions": len(versions),
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         current_app.logger.error(f"Error fetching versions: {str(e)}")
         return error_response("Failed to fetch versions", 500, str(e))
+
 
 @deliverable_bp.route("/<int:deliverable_id>/approve", methods=["POST"])
 @jwt_required()
@@ -440,26 +471,27 @@ def approve_deliverable(deliverable_id):
         # PORTFOLIO AUTO-GENERATION - Enhanced Logic
         portfolio_created = False
         try:
-            if (project and 
-                project.freelancer_id and  # Must have a freelancer assigned
-                not getattr(project, 'is_sensitive', False)):  # Not sensitive
-                
+            if (
+                project
+                and project.freelancer_id  # Must have a freelancer assigned
+                and not getattr(project, "is_sensitive", False)
+            ):  # Not sensitive
+
                 # Check if portfolio item already exists for this project
                 existing_portfolio = PortfolioItem.query.filter_by(
-                    project_id=project.id,
-                    freelancer_id=project.freelancer_id
+                    project_id=project.id, freelancer_id=project.freelancer_id
                 ).first()
-                
+
                 if not existing_portfolio:
                     portfolio = create_portfolio_item(project, deliverable)
                     db.session.add(portfolio)
                     portfolio_created = True
-                    
+
                     current_app.logger.info(
                         f"Auto-generated portfolio item for project {project.id}, "
                         f"freelancer {project.freelancer_id}"
                     )
-                    
+
                     # Send notification to project freelancer
                     project_freelancer = User.query.get(project.freelancer_id)
                     if project_freelancer and project_freelancer.email:
@@ -492,11 +524,13 @@ def approve_deliverable(deliverable_id):
                                         You can manage visibility of this item in your portfolio settings.
                                     </p>
                                 </div>
-                                """
+                                """,
                             )
                         except Exception as portfolio_email_error:
-                            current_app.logger.error(f"Portfolio notification email failed: {str(portfolio_email_error)}")
-                
+                            current_app.logger.error(
+                                f"Portfolio notification email failed: {str(portfolio_email_error)}"
+                            )
+
         except Exception as portfolio_error:
             current_app.logger.error(f"Portfolio auto-generation failed: {str(portfolio_error)}")
             # Don't fail the whole approval if portfolio generation fails
@@ -506,11 +540,11 @@ def approve_deliverable(deliverable_id):
             project_freelancer = User.query.get(project.freelancer_id)
             if project_freelancer and project_freelancer.email:
                 send_deliverable_approved_notification(
-                    project_freelancer.email,
-                    deliverable.title,
-                    project.title
+                    project_freelancer.email, deliverable.title, project.title
                 )
-                current_app.logger.info(f"Approval notification sent to project freelancer: {project_freelancer.email}")
+                current_app.logger.info(
+                    f"Approval notification sent to project freelancer: {project_freelancer.email}"
+                )
         except Exception as email_error:
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
 
@@ -527,30 +561,39 @@ def approve_deliverable(deliverable_id):
                     project_freelancer = User.query.get(project.freelancer_id)
                     if project_freelancer and project_freelancer.email:
                         from app.services.email_service import send_payment_released_notification
+
                         send_payment_released_notification(
                             project_freelancer.email, float(escrow.amount), project.title
                         )
                         current_app.logger.info(f"Payment released: ${escrow.amount}")
                 except Exception as payment_email_error:
-                    current_app.logger.error(f"Payment notification failed: {str(payment_email_error)}")
+                    current_app.logger.error(
+                        f"Payment notification failed: {str(payment_email_error)}"
+                    )
         except Exception as escrow_error:
             current_app.logger.error(f"Escrow release failed: {str(escrow_error)}")
 
         db.session.commit()
 
-        return jsonify({
-            "success": True,
-            "message": "Deliverable approved successfully" + 
-                      (" and portfolio item created" if portfolio_created else ""),
-            "deliverable": deliverable.to_dict(),
-            "portfolio_created": portfolio_created
-        }), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Deliverable approved successfully"
+                    + (" and portfolio item created" if portfolio_created else ""),
+                    "deliverable": deliverable.to_dict(),
+                    "portfolio_created": portfolio_created,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error approving deliverable: {str(e)}")
         return error_response("Failed to approve deliverable", 500, str(e))
-    
+
+
 @deliverable_bp.route("/<int:deliverable_id>/request-revision", methods=["POST"])
 @jwt_required()
 @role_required("client", "admin")
@@ -584,27 +627,35 @@ def request_revision(deliverable_id):
         try:
             project = Project.query.get(deliverable.project_id)
             project_freelancer = User.query.get(project.freelancer_id)
-            
+
             if project_freelancer and project_freelancer.email:
                 send_deliverable_feedback_notification(
                     project_freelancer.email,  # Use project freelancer email
                     deliverable.title,
-                    feedback.content
+                    feedback.content,
                 )
-                current_app.logger.info(f"Revision notification sent to project freelancer: {project_freelancer.email}")
+                current_app.logger.info(
+                    f"Revision notification sent to project freelancer: {project_freelancer.email}"
+                )
         except Exception as email_error:
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
-        return jsonify({
-            "success": True,
-            "message": "Revision requested successfully",
-            "deliverable": deliverable.to_dict(),
-            "feedback": feedback.to_dict(),
-        }), 201
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Revision requested successfully",
+                    "deliverable": deliverable.to_dict(),
+                    "feedback": feedback.to_dict(),
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error requesting revision: {str(e)}")
         return error_response("Failed to request revision", 500, str(e))
+
 
 @deliverable_bp.route("/<int:deliverable_id>/reject", methods=["POST"])
 @jwt_required()
@@ -636,27 +687,35 @@ def reject_deliverable(deliverable_id):
         try:
             project = Project.query.get(deliverable.project_id)
             project_freelancer = User.query.get(project.freelancer_id)
-            
+
             if project_freelancer and project_freelancer.email:
                 send_deliverable_feedback_notification(
                     project_freelancer.email,  # FIXED: Use project freelancer email
                     deliverable.title,
                     f"REJECTED: {data.get('reason', 'Deliverable rejected')}",
                 )
-                current_app.logger.info(f"Rejection notification sent to project freelancer: {project_freelancer.email}")
+                current_app.logger.info(
+                    f"Rejection notification sent to project freelancer: {project_freelancer.email}"
+                )
         except Exception as email_error:
             current_app.logger.error(f"Email notification failed: {str(email_error)}")
 
-        return jsonify({
-            "success": True,
-            "message": "Deliverable rejected",
-            "deliverable": deliverable.to_dict(),
-        }), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Deliverable rejected",
+                    "deliverable": deliverable.to_dict(),
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error rejecting deliverable: {str(e)}")
         return error_response("Failed to reject deliverable", 500, str(e))
+
 
 @deliverable_bp.route("/compare", methods=["POST"])
 @jwt_required()
@@ -679,10 +738,13 @@ def compare_versions():
             "version2": version2.to_dict(include_feedback=True),
             "differences": {
                 "version_diff": version2.version_number - version1.version_number,
-                "time_diff_hours": (version2.uploaded_at - version1.uploaded_at).total_seconds() / 3600,
-                "size_diff_bytes": version2.file_size - version1.file_size
-                if (version1.file_size and version2.file_size)
-                else None,
+                "time_diff_hours": (version2.uploaded_at - version1.uploaded_at).total_seconds()
+                / 3600,
+                "size_diff_bytes": (
+                    version2.file_size - version1.file_size
+                    if (version1.file_size and version2.file_size)
+                    else None
+                ),
                 "status_changed": version1.status != version2.status,
             },
         }
@@ -693,44 +755,51 @@ def compare_versions():
         current_app.logger.error(f"Error comparing versions: {str(e)}")
         return error_response("Failed to compare versions", 500, str(e))
 
+
 @deliverable_bp.route("/portfolio/items", methods=["GET"])
 @jwt_required()
 def get_my_portfolio_items():
     """Get portfolio items for current freelancer"""
     try:
         current_user_id = get_jwt_identity()
-        
+
         page = request.args.get("page", 1, type=int)
         per_page = request.args.get("per_page", 10, type=int)
         featured_only = request.args.get("featured", type=bool)
-        
+
         query = PortfolioItem.query.filter_by(freelancer_id=current_user_id)
-        
+
         if featured_only:
             query = query.filter_by(is_featured=True)
-        
+
         query = query.filter_by(is_visible=True).order_by(
-            PortfolioItem.is_featured.desc(), 
+            PortfolioItem.is_featured.desc(),
             PortfolioItem.display_order.asc(),
-            PortfolioItem.created_at.desc()
+            PortfolioItem.created_at.desc(),
         )
-        
+
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        return jsonify({
-            "success": True,
-            "portfolio_items": [item.to_dict() for item in pagination.items],
-            "pagination": {
-                "page": pagination.page,
-                "per_page": pagination.per_page,
-                "total_pages": pagination.pages,
-                "total_items": pagination.total,
-            }
-        }), 200
-        
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "portfolio_items": [item.to_dict() for item in pagination.items],
+                    "pagination": {
+                        "page": pagination.page,
+                        "per_page": pagination.per_page,
+                        "total_pages": pagination.pages,
+                        "total_items": pagination.total,
+                    },
+                }
+            ),
+            200,
+        )
+
     except Exception as e:
         current_app.logger.error(f"Error fetching portfolio items: {str(e)}")
         return error_response("Failed to fetch portfolio items", 500, str(e))
+
 
 @deliverable_bp.route("/portfolio/items/<int:item_id>/toggle-visibility", methods=["PATCH"])
 @jwt_required()
@@ -739,19 +808,24 @@ def toggle_portfolio_visibility(item_id):
     try:
         current_user_id = get_jwt_identity()
         portfolio_item = PortfolioItem.query.get_or_404(item_id)
-        
+
         if portfolio_item.freelancer_id != current_user_id:
             return error_response("Unauthorized", 403)
-            
+
         portfolio_item.is_visible = not portfolio_item.is_visible
         db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": f"Portfolio item {'visible' if portfolio_item.is_visible else 'hidden'}",
-            "portfolio_item": portfolio_item.to_dict()
-        }), 200
-        
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": f"Portfolio item {'visible' if portfolio_item.is_visible else 'hidden'}",
+                    "portfolio_item": portfolio_item.to_dict(),
+                }
+            ),
+            200,
+        )
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error toggling portfolio visibility: {str(e)}")

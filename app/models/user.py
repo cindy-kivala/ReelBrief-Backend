@@ -5,7 +5,9 @@ Description: Core user entity with auth flags, JWT helpers, and profile/notifica
 """
 
 from datetime import datetime
+
 from werkzeug.security import check_password_hash, generate_password_hash
+
 from app.extensions import db
 
 
@@ -23,7 +25,7 @@ class User(db.Model):
     avatar_url = db.Column(db.String(255))
     bio = db.Column(db.Text)
 
-    # Authentication & RBAC 
+    # Authentication & RBAC
     role = db.Column(db.String(50), nullable=False, default="freelancer")
     is_active = db.Column(db.Boolean, default=True)
     is_verified = db.Column(db.Boolean, default=False)
@@ -31,7 +33,7 @@ class User(db.Model):
     reset_token = db.Column(db.String(255))
     reset_token_expires = db.Column(db.DateTime)
 
-    # Timestamps 
+    # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
@@ -44,8 +46,12 @@ class User(db.Model):
         foreign_keys="FreelancerProfile.user_id",
     )
 
-    portfolio_items = db.relationship("PortfolioItem", back_populates="freelancer", cascade="all, delete-orphan")
-    notifications = db.relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    portfolio_items = db.relationship(
+        "PortfolioItem", back_populates="freelancer", cascade="all, delete-orphan"
+    )
+    notifications = db.relationship(
+        "Notification", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
@@ -71,11 +77,11 @@ class User(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
         }
-        
+
         # Include freelancer profile data if it exists
         if self.role == "freelancer" and self.freelancer_profile:
             user_dict["freelancer_profile"] = self.freelancer_profile.to_dict()
-            
+
         return user_dict
 
     def __repr__(self) -> str:
