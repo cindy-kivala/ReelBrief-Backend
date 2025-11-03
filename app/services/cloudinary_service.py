@@ -8,12 +8,12 @@ import logging
 
 # TODO: Cindy - Implement Cloudinary Service
 import os
+from datetime import datetime, timedelta
 
 import cloudinary
 import cloudinary.api
 import cloudinary.uploader
 from flask import current_app
-from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 
 # Add logger at the top
@@ -283,7 +283,7 @@ class CloudinaryService:
             return "document"
 
         return "unknown"
-    
+
     @staticmethod
     def generate_download_url(public_id, expires_in=3600):
         """Generate signed download URL"""
@@ -294,7 +294,7 @@ class CloudinaryService:
                 type="upload",
                 secure=True,
                 sign_url=True,
-                expires_at=datetime.now() + timedelta(seconds=expires_in)
+                expires_at=datetime.now() + timedelta(seconds=expires_in),
             )[0]
         except Exception as e:
             current_app.logger.error(f"Download URL generation failed: {str(e)}")

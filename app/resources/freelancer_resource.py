@@ -10,16 +10,19 @@ Connected to:
 - FreelancerProfile model
 """
 
+import os
+
+import sendgrid
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from ..extensions import db
-from ..models.freelancer_profile import FreelancerProfile
-from ..models.skill import Skill, FreelancerSkill
-import sendgrid
-import os
 from sendgrid.helpers.mail import Mail
 
+from ..extensions import db
+from ..models.freelancer_profile import FreelancerProfile
+from ..models.skill import FreelancerSkill, Skill
+
 freelancer_bp = Blueprint("freelancers", __name__)
+
 
 # Helper: SendGrid email sender (safe fallback)
 def send_email(to_email, subject, html_content):
@@ -44,6 +47,7 @@ def send_email(to_email, subject, html_content):
 
 # GET /api/freelancers — List freelancers (admin only)
 
+
 @freelancer_bp.route("/", methods=["GET"])
 @jwt_required()
 def list_freelancers():
@@ -56,13 +60,9 @@ def list_freelancers():
     query = FreelancerProfile.query
 
     if application_status:
-        query = query.filter(
-            FreelancerProfile.application_status == application_status
-        )
+        query = query.filter(FreelancerProfile.application_status == application_status)
     if open_to_work:
-        query = query.filter(
-            FreelancerProfile.open_to_work == (open_to_work.lower() == "true")
-        )
+        query = query.filter(FreelancerProfile.open_to_work == (open_to_work.lower() == "true"))
     if skills:
         query = query.join(FreelancerProfile.skills).filter(Skill.name.in_(skills))
 
@@ -74,10 +74,13 @@ def list_freelancers():
                 "total": paged.total,
                 "page": paged.page,
             }
-        ),200,)
+        ),
+        200,
+    )
 
 
 #  GET /api/freelancers/<id> — View one freelancer
+
 
 @freelancer_bp.route("/<int:freelancer_id>", methods=["GET"])
 @jwt_required()
@@ -87,6 +90,7 @@ def get_freelancer(freelancer_id):
 
 
 # GET /api/freelancers/pending — List pending freelancers
+
 
 @freelancer_bp.route("/pending", methods=["GET"])
 @jwt_required()
@@ -99,10 +103,12 @@ def get_pending_freelancers():
                 "freelancers": [f.to_dict() for f in freelancers],
             }
         ),
-        200,)
+        200,
+    )
 
 
 # PATCH /api/freelancers/<id>/approve — Approve freelancer
+
 
 @freelancer_bp.route("/<int:freelancer_id>/approve", methods=["PATCH"])
 @jwt_required()
@@ -121,7 +127,8 @@ def approve_freelancer(freelancer_id):
         <p>Hi {freelancer.name},</p>
         <p>Congratulations! Your application has been <b>approved</b>.</p>
         <p>You can now apply for available projects on our platform.</p>
-        """,)
+        """,
+    )
 
     return (
         jsonify(
@@ -131,10 +138,12 @@ def approve_freelancer(freelancer_id):
                 "freelancer": freelancer.to_dict(),
             }
         ),
-        200,)
+        200,
+    )
 
 
 # PATCH /api/freelancers/<id>/reject — Reject freelancer
+
 
 @freelancer_bp.route("/<int:freelancer_id>/reject", methods=["PATCH"])
 @jwt_required()
@@ -172,9 +181,8 @@ def reject_freelancer(freelancer_id):
 
 # PATCH /api/freelancers/<id>/toggle-availability
 
-@freelancer_bp.route(
-    "/<int:freelancer_id>/toggle-availability", methods=["PATCH"]
-)
+
+@freelancer_bp.route("/<int:freelancer_id>/toggle-availability", methods=["PATCH"])
 @jwt_required()
 def toggle_availability(freelancer_id):
     user_id = get_jwt_identity()
@@ -191,6 +199,7 @@ def toggle_availability(freelancer_id):
 
 # POST /api/freelancers/<id>/skills — Add or update skill
 
+
 @freelancer_bp.route("/<int:freelancer_id>/skills", methods=["POST"])
 @jwt_required()
 def add_skill(freelancer_id):
@@ -206,19 +215,28 @@ def add_skill(freelancer_id):
     skill = Skill.query.get_or_404(skill_id)
 
     existing = FreelancerSkill.query.filter_by(
-        freelancer_id=freelancer.id, skill_id=skill.id).first()
+        freelancer_id=freelancer.id, skill_id=skill.id
+    ).first()
     if existing:
         existing.proficiency = proficiency
     else:
-        link = FreelancerSkill(
-            freelancer=freelancer, skill=skill, proficiency=proficiency)
+        link = FreelancerSkill(freelancer=freelancer, skill=skill, proficiency=proficiency)
         db.session.add(link)
 
     db.session.commit()
-    return jsonify({"message": "Skill updated successfully", "skills": [s.to_dict() for s in freelancer.skills]}), 200
+    return (
+        jsonify(
+            {
+                "message": "Skill updated successfully",
+                "skills": [s.to_dict() for s in freelancer.skills],
+            }
+        ),
+        200,
+    )
 
 
 #  GET /api/freelancers/search — Find freelancers by skills or experience
+
 
 @freelancer_bp.route("/search", methods=["GET"])
 @jwt_required()
@@ -227,8 +245,7 @@ def search_freelancers():
     open_to_work = request.args.get("open_to_work", "true").lower() == "true"
     min_experience = request.args.get("min_experience")
 
-    query = FreelancerProfile.query.filter(
-        FreelancerProfile.open_to_work == open_to_work)
+    query = FreelancerProfile.query.filter(FreelancerProfile.open_to_work == open_to_work)
     if min_experience:
         query = query.filter(FreelancerProfile.years_experience >= int(min_experience))
     if skills:
@@ -240,6 +257,7 @@ def search_freelancers():
 
 # GET /api/freelancers/stats — Dashboard counts (for Caleb)
 
+
 @freelancer_bp.route("/stats", methods=["GET"])
 @jwt_required()
 def freelancer_stats():
@@ -247,4 +265,12 @@ def freelancer_stats():
     approved = FreelancerProfile.query.filter_by(application_status="approved").count()
     rejected = FreelancerProfile.query.filter_by(application_status="rejected").count()
 
-    return jsonify({"success": True, "stats": {"pending": pending, "approved": approved, "rejected": rejected}}), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "stats": {"pending": pending, "approved": approved, "rejected": rejected},
+            }
+        ),
+        200,
+    )

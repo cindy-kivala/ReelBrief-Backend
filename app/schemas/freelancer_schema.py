@@ -1,6 +1,7 @@
 # app/schemas/freelancer_schema.py
 from marshmallow import Schema, fields
 
+
 class FreelancerSchema(Schema):
     id = fields.Int()
     name = fields.Str()

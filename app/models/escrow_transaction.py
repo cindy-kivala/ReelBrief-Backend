@@ -1,10 +1,11 @@
 """
-Escrow Transaction Model - Payment Tracking
+EscrowTransaction Model - Secure Funds Movement
 Owner: Caleb
-Description: Tracks payment flow from client → escrow → freelancer.
+Description: Tracks all money held and released in escrow between clients and freelancers.
 """
 
 from datetime import datetime
+
 from app.extensions import db
 
 
@@ -12,62 +13,44 @@ class EscrowTransaction(db.Model):
     __tablename__ = "escrow_transactions"
 
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), unique=True, nullable=False)
-
-    client_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    freelancer_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)  # ✅ Restored
+    invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)  # Client
+    receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)  # Freelancer
 
     amount = db.Column(db.Numeric(10, 2), nullable=False)
-    currency = db.Column(db.String(10), default="USD", nullable=False)
-    status = db.Column(
-        db.String(20), default="held", nullable=False
-    )  # held, released, refunded, disputed
-
-    invoice_number = db.Column(db.String(50), unique=True, nullable=False)
-    invoice_url = db.Column(db.String(255), nullable=True)
-    payment_method = db.Column(db.String(50), nullable=True)
-
-    held_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default="held", nullable=False)  # held, released, refunded
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     released_at = db.Column(db.DateTime, nullable=True)
-    refunded_at = db.Column(db.DateTime, nullable=True)
-    notes = db.Column(db.Text, nullable=True)
-    
-    
-    project = db.relationship('Project', back_populates='escrow_transactions')
-    client = db.relationship("User", foreign_keys=[client_id])
-    freelancer = db.relationship("User", foreign_keys=[freelancer_id])
-    admin = db.relationship("User", foreign_keys=[admin_id])
+
+    # ✅ Link back to Project
+    project = db.relationship("Project", back_populates="escrow_transactions")
+
+    # ✅ Explicit relationship to Invoice
+    invoice = db.relationship(
+        "Invoice", back_populates="escrow_transaction", foreign_keys=[invoice_id]
+    )
+
+    # Relationships to users
+    sender = db.relationship("User", foreign_keys=[sender_id], backref="sent_escrow_transactions")
+
+    receiver = db.relationship(
+        "User", foreign_keys=[receiver_id], backref="received_escrow_transactions"
+    )
 
     def __repr__(self):
-        return f"<EscrowTransaction {self.id} Project:{self.project_id} ${self.amount} Status:{self.status}>"
+        return f"<EscrowTransaction {self.id} | {self.status}>"
 
     def to_dict(self):
+        """Serialize escrow transaction for frontend"""
         return {
             "id": self.id,
+            "invoice_id": self.invoice_id,
             "project_id": self.project_id,
-            "project_title": self.project.title if self.project else "Unknown Project",
-            "client_id": self.client_id,
-            "client_name": (
-                f"{self.client.first_name} {self.client.last_name}" if self.client else "Unknown"
-            ),
-            "freelancer_id": self.freelancer_id,
-            "freelancer_name": (
-                f"{self.freelancer.first_name} {self.freelancer.last_name}"
-                if self.freelancer
-                else "Unknown"
-            ),
-            "admin_id": self.admin_id,
+            "sender_id": self.sender_id,
+            "receiver_id": self.receiver_id,
             "amount": float(self.amount),
-            "currency": self.currency,
             "status": self.status,
-            "invoice_number": self.invoice_number,
-            "invoice_url": self.invoice_url,
-            "payment_method": self.payment_method,
-            "held_at": self.held_at.isoformat() if self.held_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
             "released_at": self.released_at.isoformat() if self.released_at else None,
-            "paid_at": (
-                self.released_at.isoformat() if self.released_at else self.held_at.isoformat()
-            ),
-            "notes": self.notes,
         }

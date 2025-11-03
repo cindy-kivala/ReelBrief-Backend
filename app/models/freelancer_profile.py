@@ -51,12 +51,14 @@ Used by:
 """
 
 from datetime import datetime
+
 from app.extensions import db
+
 from .skill import FreelancerSkill
 
 
 class FreelancerProfile(db.Model):
-    __tablename__ = 'freelancer_profiles'
+    __tablename__ = "freelancer_profiles"
 
     # Primary identifiers
     id = db.Column(db.Integer, primary_key=True)
@@ -76,8 +78,8 @@ class FreelancerProfile(db.Model):
     cv_uploaded_at = db.Column(db.DateTime)
 
     # Vetting & status
-    application_status = db.Column( db.String(20), default="pending") 
-     # pending | approved | rejected
+    application_status = db.Column(db.String(20), default="pending")
+    # pending | approved | rejected
     rejection_reason = db.Column(db.String(255))
     approved_at = db.Column(db.DateTime)
     approved_by = db.Column(db.Integer, db.ForeignKey("users.id"))  # Admin ID
@@ -85,27 +87,25 @@ class FreelancerProfile(db.Model):
 
     #  Tracking
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column( db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow )
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = db.relationship('User', back_populates='freelancer_profile', foreign_keys=[user_id])
+    user = db.relationship("User", back_populates="freelancer_profile", foreign_keys=[user_id])
 
     skill_associations = db.relationship(
-    "FreelancerSkill", 
-    back_populates="freelancer_profile",
-    overlaps="freelancer_profiles",
-      
-)
-
+        "FreelancerSkill",
+        back_populates="freelancer_profile",
+        overlaps="freelancer_profiles",
+    )
 
     skills = db.relationship(
         "Skill",
         secondary="freelancer_skills",
         back_populates="freelancer_profiles",
-        overlaps="skill_associations,freelancer_skills,skill"
+        overlaps="skill_associations,freelancer_skills,skill",
     )
     # freelancer_skills = db.relationship(
-    #     'FreelancerSkill', 
+    #     'FreelancerSkill',
     #     back_populates='freelancer_profile',
     #     cascade='all, delete-orphan'
     # )
@@ -123,9 +123,7 @@ class FreelancerProfile(db.Model):
             "hourly_rate": self.hourly_rate,
             "cv_url": self.cv_url,
             "cv_filename": self.cv_filename,
-            "cv_uploaded_at": self.cv_uploaded_at.isoformat()
-            if self.cv_uploaded_at
-            else None,
+            "cv_uploaded_at": self.cv_uploaded_at.isoformat() if self.cv_uploaded_at else None,
             "application_status": self.application_status,
             "rejection_reason": self.rejection_reason,
             "approved_at": self.approved_at.isoformat() if self.approved_at else None,

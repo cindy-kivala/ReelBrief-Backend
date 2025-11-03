@@ -11,8 +11,8 @@ Populates the database with initial test data:
  - ProjectSkills
 """
 
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
 
 from app import create_app
 from app.extensions import db
@@ -24,7 +24,7 @@ except Exception:
     User = None
 
 try:
-    from app.models.skill import Skill, FreelancerSkill
+    from app.models.skill import FreelancerSkill, Skill
 except Exception:
     Skill = None
     FreelancerSkill = None
@@ -101,6 +101,7 @@ def seed_users_and_freelancers(skills):
             continue
 
         from werkzeug.security import generate_password_hash
+
         user = User(
             email=u["email"],
             name=u["name"],
@@ -259,9 +260,7 @@ def seed_projects(skills, freelancers, client_user=None):
         for proj in created_projects:
             chosen = random.sample(skills, min(3, len(skills)))
             for sk in chosen:
-                exists = ProjectSkill.query.filter_by(
-                    project_id=proj.id, skill_id=sk.id
-                ).first()
+                exists = ProjectSkill.query.filter_by(project_id=proj.id, skill_id=sk.id).first()
                 if not exists:
                     ps = ProjectSkill(
                         project_id=proj.id,

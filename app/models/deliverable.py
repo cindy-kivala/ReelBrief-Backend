@@ -4,8 +4,9 @@ Owner: Cindy
 Description: Tracks file uploads with version control and Cloudinary integration
 """
 
-from app.extensions import db
 from datetime import datetime
+
+from app.extensions import db
 
 
 class Deliverable(db.Model):

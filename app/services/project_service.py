@@ -5,9 +5,10 @@ Description: Manages project creation, updates, assignments, and matching freela
 """
 
 from datetime import datetime
+
 from ..extensions import db
-from ..models.project import Project
 from ..models.freelancer_profile import FreelancerProfile
+from ..models.project import Project
 from ..models.skill import Skill
 
 
@@ -24,7 +25,7 @@ class ProjectService:
                 description=data.get("description"),
                 budget=data.get("budget"),
                 deadline=datetime.strptime(data.get("deadline"), "%Y-%m-%d"),
-                is_sensitive=data.get("is_sensitive", False)
+                is_sensitive=data.get("is_sensitive", False),
             )
 
             # attach skills if provided
@@ -98,8 +99,7 @@ class ProjectService:
             return []
 
         matched_freelancers = (
-            FreelancerProfile.query
-            .filter(FreelancerProfile.approved == True)
+            FreelancerProfile.query.filter(FreelancerProfile.approved == True)
             .filter(FreelancerProfile.is_available == True)
             .join(FreelancerProfile.skills)
             .filter(Skill.id.in_(required_skill_ids))
@@ -111,10 +111,9 @@ class ProjectService:
         suggestions = []
         for f in matched_freelancers:
             overlap = len([s for s in f.skills if s.id in required_skill_ids])
-            suggestions.append({
-                "freelancer": f.to_dict(),
-                "match_score": overlap / len(required_skill_ids)
-            })
+            suggestions.append(
+                {"freelancer": f.to_dict(), "match_score": overlap / len(required_skill_ids)}
+            )
 
         suggestions.sort(key=lambda x: x["match_score"], reverse=True)
         return suggestions

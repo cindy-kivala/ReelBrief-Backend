@@ -11,7 +11,9 @@ Description: Provides pagination utilities for API responses.
 """
 
 from math import ceil
+
 from flask import request
+
 
 def paginate_query(query, page=None, per_page=None):
     """
@@ -35,10 +37,7 @@ def paginate_query(query, page=None, per_page=None):
     pagination_obj = query.paginate(page=page, per_page=per_page, error_out=False)
     meta = get_pagination_meta(pagination_obj)
 
-    return {
-        "items": pagination_obj.items,
-        "meta": meta
-    }
+    return {"items": pagination_obj.items, "meta": meta}
 
 
 def get_pagination_meta(pagination_obj):
@@ -54,7 +53,9 @@ def get_pagination_meta(pagination_obj):
         "page": pagination_obj.page,
         "per_page": pagination_obj.per_page,
         "total_items": pagination_obj.total,
-        "total_pages": ceil(pagination_obj.total / pagination_obj.per_page) if pagination_obj.per_page else 1,
+        "total_pages": (
+            ceil(pagination_obj.total / pagination_obj.per_page) if pagination_obj.per_page else 1
+        ),
         "has_next": pagination_obj.has_next,
         "has_prev": pagination_obj.has_prev,
         "next_page": pagination_obj.next_num if pagination_obj.has_next else None,

@@ -1,10 +1,11 @@
 import os
+
 import sendgrid
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
-from flask_marshmallow import Marshmallow
 from flask_mail import Mail
+from flask_marshmallow import Marshmallow
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -14,6 +15,7 @@ mail = Mail()
 
 # Initialized after env is loaded
 sg = None
+
 
 def init_extensions(app):
     """Initialize Flask extensions and SendGrid client AFTER env is loaded."""

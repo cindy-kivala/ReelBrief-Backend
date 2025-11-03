@@ -11,29 +11,30 @@ Description: Get and update user profiles
 """
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models.user import User
+from flask_jwt_extended import get_jwt_identity, jwt_required
+
 from app.extensions import db
-from app.utils.decorators import role_required  # ✅ FIXED PATH
+from app.models.user import User
 from app.schemas.user_schema import user_schema, users_schema
-
-
+from app.utils.decorators import role_required  # ✅ FIXED PATH
 
 user_bp = Blueprint("user_bp", __name__)
+
 
 # -------------------- GET USER BY ID --------------------
 @user_bp.route("/<int:id>", methods=["GET"])
 @jwt_required()
 def get_users():
     current_user = get_jwt_identity()
-    user = User.query.get(current_user['id'])
-    
-    if not user or user.role != 'admin':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
+    user = User.query.get(current_user["id"])
+
+    if not user or user.role != "admin":
+        return jsonify({"error": "Unauthorized"}), 403
+
     # returning user data properly
     users = User.query.all()
     return jsonify([user.to_dict() for user in users])
+
 
 # @jwt_required()
 # def get_user(id):
@@ -96,16 +97,13 @@ def list_users():
     """
     Admin-only endpoint to list users with pagination.
     """
-    from app.services.pagination_service import paginate_query
     from app.schemas.user_schema import users_schema
+    from app.services.pagination_service import paginate_query
 
     query = User.query.order_by(User.created_at.desc())
     result = paginate_query(query)
 
-    return jsonify({
-        "data": users_schema.dump(result["items"]),
-        "meta": result["meta"]
-    }), 200
+    return jsonify({"data": users_schema.dump(result["items"]), "meta": result["meta"]}), 200
 
 
 # TODO: Ryan - Implement user endpoints

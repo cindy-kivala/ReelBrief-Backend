@@ -12,7 +12,7 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = User
         load_instance = True  # Deserialize into model instances
-        include_fk = True     # Include foreign keys if present
+        include_fk = True  # Include foreign keys if present
         ordered = True
         exclude = ("password_hash", "verification_token", "reset_token", "reset_token_expires")
 

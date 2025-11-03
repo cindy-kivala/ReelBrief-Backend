@@ -5,9 +5,11 @@ Description: Handles creation, retrieval, and payment of invoices.
 """
 
 from datetime import datetime
-from flask import Blueprint, jsonify, request
+
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 from sqlalchemy.exc import IntegrityError
+
 from app.extensions import db
 from app.models.escrow_transaction import EscrowTransaction
 from app.models.invoice import Invoice
@@ -40,12 +42,17 @@ def list_invoices():
     pagination = query.order_by(Invoice.issue_date.desc()).paginate(page=page, per_page=per_page)
     invoices = [inv.to_dict() for inv in pagination.items]
 
-    return jsonify({
-        "invoices": invoices,
-        "total": pagination.total,
-        "pages": pagination.pages,
-        "current_page": page,
-    }), 200
+    return (
+        jsonify(
+            {
+                "invoices": invoices,
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "current_page": page,
+            }
+        ),
+        200,
+    )
 
 
 # -------------------- GET /api/invoices/<id> --------------------
@@ -115,17 +122,17 @@ def create_invoice():
         db.session.rollback()
         return jsonify({"error": "Duplicate invoice number"}), 409
 
-    return jsonify({
-        "message": "Invoice created successfully",
-        "invoice": new_invoice.to_dict()
-    }), 201
+    return (
+        jsonify({"message": "Invoice created successfully", "invoice": new_invoice.to_dict()}),
+        201,
+    )
 
 
 # -------------------- PATCH /api/invoices/<id>/pay --------------------
 @invoice_bp.patch("/<int:invoice_id>/pay")
 @jwt_required()
 def pay_invoice(invoice_id):
-    """Mark an invoice as paid (client only)."""
+    """Mark an invoice as paid (client only) and create an escrow record."""
     user_id = get_jwt_identity()
     claims = get_jwt()
     role = claims.get("role")
@@ -138,18 +145,69 @@ def pay_invoice(invoice_id):
     if invoice.status == "paid":
         return jsonify({"message": "Invoice already paid"}), 200
 
+    project = Project.query.get(invoice.project_id)
+    if not project:
+        return jsonify({"error": "Project not found"}), 404
+
+    # ✅ Create or update escrow transaction (no escrow_id on Invoice)
+    existing_escrow = EscrowTransaction.query.filter_by(invoice_id=invoice.id).first()
+
+    if not existing_escrow:
+        new_escrow = EscrowTransaction(
+            project_id=invoice.project_id,
+            invoice_id=invoice.id,
+            sender_id=invoice.client_id,
+            receiver_id=invoice.freelancer_id,
+            amount=invoice.amount,
+            status="held",
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(new_escrow)
+    else:
+        existing_escrow.status = "held"
+        existing_escrow.amount = invoice.amount
+        existing_escrow.created_at = datetime.utcnow()
+
     invoice.status = "paid"
     invoice.paid_at = datetime.utcnow()
 
-    # Optional: update escrow
-    if invoice.escrow_id:
-        escrow = EscrowTransaction.query.get(invoice.escrow_id)
-        if escrow:
-            escrow.status = "released"
-            escrow.released_at = datetime.utcnow()
+    db.session.commit()
+
+    return (
+        jsonify({"message": "Invoice paid and funds held in escrow", "invoice": invoice.to_dict()}),
+        200,
+    )
+
+
+# -------------------- PATCH /api/invoices/<id> --------------------
+@invoice_bp.patch("/<int:invoice_id>")
+@jwt_required()
+def update_invoice(invoice_id):
+    """Update an existing invoice (admin or freelancer who created it)."""
+    user_id = get_jwt_identity()
+    claims = get_jwt()
+    role = claims.get("role")
+
+    invoice = Invoice.query.get_or_404(invoice_id)
+
+    # Only admin or the freelancer who owns it can update
+    if role != "admin" and user_id != invoice.freelancer_id:
+        return jsonify({"error": "Unauthorized to update this invoice"}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 400
+
+    allowed_fields = ["amount", "due_date", "notes", "status"]
+    for field in allowed_fields:
+        if field in data:
+            if field == "due_date" and data[field]:
+                invoice.due_date = datetime.strptime(data[field], "%Y-%m-%d")
+            else:
+                setattr(invoice, field, data[field])
 
     db.session.commit()
-    return jsonify({"message": "Invoice marked as paid", "invoice": invoice.to_dict()}), 200
+    return jsonify({"message": "Invoice updated successfully", "invoice": invoice.to_dict()}), 200
 
 
 # -------------------- DELETE /api/invoices/<id> --------------------
