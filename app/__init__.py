@@ -116,52 +116,58 @@ def create_app(config_class=Config):
     for bp, prefix in blueprints:
         app.register_blueprint(bp, url_prefix=prefix)
 
-        # FIXED: CORS Configuration for Production
-    # Production CORS setup
+        # FIXED CORS Configuration
     if os.environ.get('FLASK_ENV') == 'production':
-        # In production, allow your Vercel domain and any others you need
         frontend_urls = [
             "https://reel-brief-frontend.vercel.app",
-            "http://localhost:5173"  # For local testing
+            "https://reel-brief-frontend-*.vercel.app", 
+            "https://*.vercel.app",
+            "http://localhost:5173"
         ]
     else:
-        # Development
         frontend_urls = ["http://localhost:5173"]
 
     print(f"CORS configured for origins: {frontend_urls}")
 
-    # Serve uploads (CVs) - with production path adjustment
+    # Serve uploads (CVs)
     @app.route("/uploads/<filename>")
     def serve_uploaded_file(filename):
         upload_dir = os.path.join(os.getcwd(), "uploads")
-        # Create uploads directory if it doesn't exist
         os.makedirs(upload_dir, exist_ok=True)
         return send_from_directory(upload_dir, filename)
 
+    # Apply CORS to all routes with explicit configuration
     CORS(
         app,
-        resources={
-            r"/api/*": {
-                "origins": frontend_urls}},
-        supports_credentials=True,
+        origins=frontend_urls,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "Access-Control-Request-Headers", "Access-Control-Request-Method"],
         expose_headers=["Content-Type", "Authorization"],
-        max_age=3600,
+        supports_credentials=True,
+        max_age=3600
     )
 
-    # Additional CORS headers (backup for preflight requests)
+    # Handle OPTIONS requests globally
+    @app.before_request
+    def handle_options():
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'preflight'})
+            response.headers.add('Access-Control-Allow-Origin', ', '.join(frontend_urls))
+            response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            response.headers.add('Access-Control-Max-Age', '3600')
+            return response
+
+    # Additional CORS headers
     @app.after_request
     def after_request(response):
-        origin = request.headers.get("Origin")
+        origin = request.headers.get('Origin')
         if origin in frontend_urls:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Methods"] = (
-                "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            )
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Max-Age"] = "3600"
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
     # Register Error Handlers and Swagger
