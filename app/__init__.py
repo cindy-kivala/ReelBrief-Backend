@@ -21,7 +21,7 @@ from app.utils.jwt_handlers import register_jwt_error_handlers
 def create_app(config_class=Config):
     """Application factory pattern for ReelBrief."""
 
-    #  Load Environment Variables
+    # Load Environment Variables
     load_dotenv()
 
     app = Flask(__name__)
@@ -31,12 +31,19 @@ def create_app(config_class=Config):
     # Initialize all Flask extensions (DB, JWT, Mail, etc.)
     init_extensions(app)
 
-    # Initialize SendGrid client globally
-
     # Health Check Route
     @app.route("/")
     def home():
         return jsonify({"message": "ReelBrief API is live!"}), 200
+
+    @app.route("/health")
+    def health_check():
+        """Health check endpoint for Render"""
+        return jsonify({
+            "status": "healthy", 
+            "service": "ReelBrief API",
+            "environment": os.environ.get('FLASK_ENV', 'development')
+        }), 200
 
     # Configure JWT identity loaders
     from app.models.user import User
@@ -56,7 +63,7 @@ def create_app(config_class=Config):
         identity = jwt_data["sub"]
         return User.query.get(identity)
 
-    # Ensure all models are imported and relationships configured
+    # Database setup with production support
     with app.app_context():
         from app.models.deliverable import Deliverable
         from app.models.feedback import Feedback
@@ -65,6 +72,7 @@ def create_app(config_class=Config):
         from app.models.review import Review
         from app.models.user import User
 
+        # Only create tables if they don't exist (Render PostgreSQL)
         db.create_all()
 
     # Register Blueprints
@@ -84,6 +92,7 @@ def create_app(config_class=Config):
     from app.routes.test_notifications import test_bp
     from app.resources.project_approval_resource import project_approval_bp
     from app.resources.portfolio_resource import portfolio_bp
+    from app.resources.notification_resource import notification_bp
 
     blueprints = [
         (auth_bp, "/api/auth"),
@@ -102,45 +111,38 @@ def create_app(config_class=Config):
         (test_bp, "/api"),
         (project_approval_bp, "/api/projects"),
         (portfolio_bp, "/api/portfolio"),
+        (notification_bp, "/api/notifications"),
     ]
     for bp, prefix in blueprints:
         app.register_blueprint(bp, url_prefix=prefix)
 
-    # Register all blueprints
-    # app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    # app.register_blueprint(user_bp, url_prefix="/api/users")
-    # app.register_blueprint(project_bp, url_prefix="/api/projects")
-    # app.register_blueprint(deliverable_bp, url_prefix="/api/deliverable")
-    # app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
-    # app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
-    # app.register_blueprint(freelancer_bp, url_prefix="/api/freelancers")
-    # app.register_blueprint(invoice_bp, url_prefix="/api/invoices")
-    # app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
-    # app.register_blueprint(review_bp, url_prefix="/api/reviews")
-    # app.register_blueprint(activity_bp, url_prefix="/api/activity")
-    # app.register_blueprint(skills_bp, url_prefix="/api")
-    # app.register_blueprint(test_bp, url_prefix="/api")
-    # app.register_blueprint(project_approval_bp, url_prefix="/api/projects")
-
-    # FIXED: CORS Configuration AFTER Blueprint Registration
-    # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reel-brief-frontend.vercel.app
-    # frontend_urls_str = os.getenv("FRONTEND_URLS", "http://localhost:5173")
-    # FIXED: CORS Configuration
-    frontend_urls_str = os.getenv(
-        "FRONTEND_URLS",
-        "http://localhost:5173,https://reel-brief-frontend.vercel.app",
-    )
-    frontend_urls = [url.strip() for url in frontend_urls_str.split(",")]
+    # FIXED: CORS Configuration for Production
+    # Production CORS setup
+    if os.environ.get('FLASK_ENV') == 'production':
+        # In production, allow your Vercel domain and any others you need
+        frontend_urls = [
+            "https://reel-brief-frontend.vercel.app",
+            "https://reel-brief-frontend.vercel.app/"
+        ]
+    else:
+        # Development - localhost
+        frontend_urls = ["http://localhost:5173"]
+    
     print(f"CORS configured for origins: {frontend_urls}")
-    # Serve uploads (CVs)
+
+    # Serve uploads (CVs) - with production path adjustment
     @app.route("/uploads/<filename>")
     def serve_uploaded_file(filename):
         upload_dir = os.path.join(os.getcwd(), "uploads")
+        # Create uploads directory if it doesn't exist
+        os.makedirs(upload_dir, exist_ok=True)
         return send_from_directory(upload_dir, filename)
 
     CORS(
         app,
-        resources={r"/api/*": {"origins": frontend_urls}},
+        resources={
+            r"/api/*": {
+                "origins": frontend_urls}},
         supports_credentials=True,
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization"],
@@ -166,23 +168,7 @@ def create_app(config_class=Config):
     register_jwt_error_handlers(jwt)
     register_error_handlers(app)
 
-    # # Blueprints
-    # from app.resources.auth_resource import auth_bp
-    # from app.resources.user_resource import user_bp
-    # from app.resources.deliverable_resource import deliverable_bp
-    # from app.resources.escrow_resource import escrow_bp
-    # from app.resources.feedback_resource import feedback_bp
-    # # from app.resources.project_resource import project_bp
-
-    # app.register_blueprint(auth_bp, url_prefix="/api/auth")
-    # app.register_blueprint(user_bp, url_prefix="/api/users")
-    # # app.register_blueprint(project_bp, url_prefix="/api/projects")
-    # app.register_blueprint(deliverable_bp, url_prefix="/api/deliverable")
-    # app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
-    # app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
-    # # app.register_blueprint(project_bp, url_prefix="/api/projects")
-
-    #  Swagger Documentation 
+    # Swagger Documentation 
     swagger_config = {
         "headers": [],
         "specs": [
@@ -208,12 +194,4 @@ def create_app(config_class=Config):
     }
     Swagger(app, config=swagger_config, template=swagger_template)
 
-    #  Return Configured App 
-    # with app.app_context():
-    #     print("\n=== Registered Routes ===")
-    #     for rule in app.url_map.iter_rules():
-    #         print(f"{rule.endpoint}: {rule.rule} {list(rule.methods - {'OPTIONS', 'HEAD'})}")
-    #     print("========================\n")
-
-    
     return app

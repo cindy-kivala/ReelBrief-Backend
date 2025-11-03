@@ -15,6 +15,7 @@ from app.extensions import db
 from app.models.deliverable import Deliverable
 from app.models.escrow_transaction import EscrowTransaction
 from app.models.portfolio_item import PortfolioItem
+from app.models.wallet import Wallet
 from app.models.project import Project
 from app.models.user import User
 from app.services.cloudinary_service import CloudinaryService
@@ -450,7 +451,6 @@ def get_deliverable_versions(deliverable_id):
         current_app.logger.error(f"Error fetching versions: {str(e)}")
         return error_response("Failed to fetch versions", 500, str(e))
 
-
 @deliverable_bp.route("/<int:deliverable_id>/approve", methods=["POST"])
 @jwt_required()
 @role_required("client", "admin")
@@ -463,127 +463,124 @@ def approve_deliverable(deliverable_id):
         if deliverable.status == "approved":
             return error_response("Deliverable already approved", 400)
 
-        # Approve the deliverable
-        deliverable.approve(reviewed_by_id=current_user_id)
+        # Get project and verify freelancer exists
         project = Project.query.get(deliverable.project_id)
+        if not project or not project.freelancer_id:
+            return error_response("Project or freelancer not found", 404)
 
-        # PORTFOLIO AUTO-GENERATION - Enhanced Logic
+        # Approve the deliverable
+        deliverable.status = "approved"
+        deliverable.reviewed_by = current_user_id
+        deliverable.reviewed_at = datetime.utcnow()
+
+        # PORTFOLIO AUTO-GENERATION - SIMPLIFIED AND FIXED
         portfolio_created = False
+        portfolio_item = None
+        
         try:
-            if (
-                project
-                and project.freelancer_id  # Must have a freelancer assigned
-                and not getattr(project, "is_sensitive", False)
-            ):  # Not sensitive
+            # Check if portfolio item already exists for this project
+            existing_portfolio = PortfolioItem.query.filter_by(
+                project_id=project.id, 
+                freelancer_id=project.freelancer_id
+            ).first()
 
-                # Check if portfolio item already exists for this project
-                existing_portfolio = PortfolioItem.query.filter_by(
-                    project_id=project.id, freelancer_id=project.freelancer_id
-                ).first()
-
-                if not existing_portfolio:
-                    portfolio = create_portfolio_item(project, deliverable)
-                    db.session.add(portfolio)
-                    portfolio_created = True
-
-                    current_app.logger.info(
-                        f"Auto-generated portfolio item for project {project.id}, "
-                        f"freelancer {project.freelancer_id}"
-                    )
-
-                    # Send notification to project freelancer
-                    project_freelancer = User.query.get(project.freelancer_id)
-                    if project_freelancer and project_freelancer.email:
-                        try:
-                            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-                            send_email(
-                                recipient=project_freelancer.email,
-                                subject="🎉 Portfolio Item Added Automatically!",
-                                html_content=f"""
-                                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                    <h2 style="color: #1E3A8A;">Portfolio Item Added</h2>
-                                    <p>Hello {project_freelancer.first_name},</p>
-                                    <p>Great news! Your project <strong>"{project.title}"</strong> has been automatically added to your portfolio.</p>
-                                    <p>Clients can now see this completed work when browsing your profile.</p>
-                                    
-                                    <div style="background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                                        <h3 style="margin: 0 0 10px 0; color: #1F2937;">{project.title}</h3>
-                                        <p style="margin: 5px 0;"><strong>Status:</strong> Completed & Approved</p>
-                                        <p style="margin: 5px 0;"><strong>Deliverable:</strong> {deliverable.title}</p>
-                                        <p style="margin: 5px 0;"><strong>Added to Portfolio:</strong> {datetime.utcnow().strftime('%B %d, %Y')}</p>
-                                    </div>
-                                    
-                                    <a href="{frontend_url}/portfolio" 
-                                       style="display: inline-block; background-color: #1E3A8A; color: white; 
-                                              padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
-                                        View My Portfolio
-                                    </a>
-                                    
-                                    <p style="color: #6B7280; font-size: 14px;">
-                                        You can manage visibility of this item in your portfolio settings.
-                                    </p>
-                                </div>
-                                """,
-                            )
-                        except Exception as portfolio_email_error:
-                            current_app.logger.error(
-                                f"Portfolio notification email failed: {str(portfolio_email_error)}"
-                            )
+            if not existing_portfolio:
+                # Create new portfolio item
+                portfolio_item = PortfolioItem(
+                    freelancer_id=project.freelancer_id,
+                    project_id=project.id,
+                    deliverable_id=deliverable.id,
+                    title=project.title,
+                    description=project.description or f"Completed project: {project.title}",
+                    deliverables_description=f"Approved deliverable: {deliverable.title}",
+                    skills_used=[],  # You can populate this from project skills
+                    project_duration="Not specified",
+                    client_feedback="Project successfully completed and approved",
+                    is_visible=True,
+                    cover_image_url=deliverable.thumbnail_url or deliverable.file_url,
+                    project_url=f"/projects/{project.id}",
+                    completion_date=datetime.utcnow(),
+                )
+                db.session.add(portfolio_item)
+                portfolio_created = True
+                current_app.logger.info(f"Auto-generated portfolio item for project {project.id}")
 
         except Exception as portfolio_error:
             current_app.logger.error(f"Portfolio auto-generation failed: {str(portfolio_error)}")
             # Don't fail the whole approval if portfolio generation fails
 
-        # Approval notification
+        # ESCROW PAYMENT RELEASE - FIXED
         try:
-            project_freelancer = User.query.get(project.freelancer_id)
-            if project_freelancer and project_freelancer.email:
-                send_deliverable_approved_notification(
-                    project_freelancer.email, deliverable.title, project.title
-                )
-                current_app.logger.info(
-                    f"Approval notification sent to project freelancer: {project_freelancer.email}"
-                )
-        except Exception as email_error:
-            current_app.logger.error(f"Email notification failed: {str(email_error)}")
-
-        # Escrow Payment Release Logic
-        try:
-            escrow = EscrowTransaction.query.filter_by(project_id=project.id, status="held").first()
+            escrow = EscrowTransaction.query.filter_by(
+                project_id=project.id, 
+                status="held"
+            ).first()
 
             if escrow:
+                # Release escrow funds
                 escrow.status = "released"
                 escrow.released_at = datetime.utcnow()
-
-                # Send payment notification
-                try:
-                    project_freelancer = User.query.get(project.freelancer_id)
-                    if project_freelancer and project_freelancer.email:
-                        from app.services.email_service import send_payment_released_notification
-
-                        send_payment_released_notification(
-                            project_freelancer.email, float(escrow.amount), project.title
-                        )
-                        current_app.logger.info(f"Payment released: ${escrow.amount}")
-                except Exception as payment_email_error:
-                    current_app.logger.error(
-                        f"Payment notification failed: {str(payment_email_error)}"
+                
+                # Credit freelancer's wallet
+                freelancer_wallet = Wallet.query.filter_by(user_id=project.freelancer_id).first()
+                if freelancer_wallet:
+                    freelancer_wallet.credit(escrow.amount)
+                    
+                    # Create wallet transaction record
+                    from app.models.wallet_transaction import WalletTransaction
+                    wallet_tx = WalletTransaction(
+                        wallet_id=freelancer_wallet.id,
+                        amount=escrow.amount,
+                        transaction_type="release",
+                        description=f"Payment released for project: {project.title}",
+                        reference_id=escrow.id
                     )
+                    db.session.add(wallet_tx)
+                    
+                    current_app.logger.info(f"Payment released: ${escrow.amount} to freelancer {project.freelancer_id}")
+
         except Exception as escrow_error:
             current_app.logger.error(f"Escrow release failed: {str(escrow_error)}")
 
+        # Commit all changes
         db.session.commit()
 
+        # Send notifications
+        try:
+            project_freelancer = User.query.get(project.freelancer_id)
+            if project_freelancer:
+                # Send approval notification
+                send_deliverable_approved_notification(deliverable, project_freelancer)
+                
+                # Send portfolio notification if created
+                if portfolio_created and portfolio_item:
+                    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+                    send_email(
+                        recipient=project_freelancer.email,
+                        subject="Portfolio Item Added!",
+                        html_content=f"""
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                            <h2 style="color: #1E3A8A;">Portfolio Item Added</h2>
+                            <p>Hello {project_freelancer.first_name},</p>
+                            <p>Your project <strong>"{project.title}"</strong> has been automatically added to your portfolio!</p>
+                            <a href="{frontend_url}/portfolio" style="display: inline-block; background-color: #1E3A8A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+                                View My Portfolio
+                            </a>
+                        </div>
+                        """
+                    )
+        except Exception as email_error:
+            current_app.logger.error(f"Email notification failed: {str(email_error)}")
+
         return (
-            jsonify(
-                {
-                    "success": True,
-                    "message": "Deliverable approved successfully"
-                    + (" and portfolio item created" if portfolio_created else ""),
-                    "deliverable": deliverable.to_dict(),
-                    "portfolio_created": portfolio_created,
-                }
-            ),
+            jsonify({
+                "success": True,
+                "message": "Deliverable approved successfully" + 
+                          (" and portfolio item created" if portfolio_created else ""),
+                "deliverable": deliverable.to_dict(),
+                "portfolio_created": portfolio_created,
+                "payment_released": escrow is not None
+            }),
             200,
         )
 
@@ -591,7 +588,6 @@ def approve_deliverable(deliverable_id):
         db.session.rollback()
         current_app.logger.error(f"Error approving deliverable: {str(e)}")
         return error_response("Failed to approve deliverable", 500, str(e))
-
 
 @deliverable_bp.route("/<int:deliverable_id>/request-revision", methods=["POST"])
 @jwt_required()

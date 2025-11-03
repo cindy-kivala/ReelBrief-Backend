@@ -6,6 +6,7 @@ Manages user wallet balances and transaction records (deposits, payments, refund
 """
 
 from datetime import datetime
+from decimal import Decimal
 
 from app.extensions import db
 
@@ -40,15 +41,19 @@ class Wallet(db.Model):
         }
 
     def credit(self, amount):
-        """Add funds to wallet"""
+        """Add funds to wallet with proper Decimal conversion"""
         if amount <= 0:
             raise ValueError("Credit amount must be positive")
-        self.balance += amount
+        amount_decimal = Decimal(str(amount))
+        self.balance += amount_decimal
+        db.session.commit()  
 
     def debit(self, amount):
-        """Remove funds from wallet"""
+        """Remove funds from wallet with proper Decimal conversion"""
         if amount <= 0:
             raise ValueError("Debit amount must be positive")
-        if self.balance < amount:
+        amount_decimal = Decimal(str(amount))
+        if self.balance < amount_decimal:
             raise ValueError("Insufficient balance")
-        self.balance -= amount
+        self.balance -= amount_decimal
+        db.session.commit() 

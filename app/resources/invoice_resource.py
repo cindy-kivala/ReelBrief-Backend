@@ -14,6 +14,10 @@ from app.extensions import db
 from app.models.escrow_transaction import EscrowTransaction
 from app.models.invoice import Invoice
 from app.models.project import Project
+from app.models.wallet import Wallet
+from app.models.user import User
+from app.models.wallet_transaction import WalletTransaction
+from app.services.email_service import send_invoice_email, send_payment_received_email
 
 invoice_bp = Blueprint("invoice_bp", __name__, url_prefix="/api/invoices")
 
@@ -128,55 +132,56 @@ def create_invoice():
     )
 
 
-# -------------------- PATCH /api/invoices/<id>/pay --------------------
-@invoice_bp.patch("/<int:invoice_id>/pay")
+# -------------------- POST /api/invoices/<id>/pay --------------------
+@invoice_bp.route('/<int:invoice_id>/pay', methods=['POST'])
 @jwt_required()
 def pay_invoice(invoice_id):
-    """Mark an invoice as paid (client only) and create an escrow record."""
-    user_id = get_jwt_identity()
-    claims = get_jwt()
-    role = claims.get("role")
-
-    invoice = Invoice.query.get_or_404(invoice_id)
-
-    if role != "client" or user_id != invoice.client_id:
-        return jsonify({"error": "Only the client who owns this invoice can pay it"}), 403
-
-    if invoice.status == "paid":
-        return jsonify({"message": "Invoice already paid"}), 200
-
-    project = Project.query.get(invoice.project_id)
-    if not project:
-        return jsonify({"error": "Project not found"}), 404
-
-    # ✅ Create or update escrow transaction (no escrow_id on Invoice)
-    existing_escrow = EscrowTransaction.query.filter_by(invoice_id=invoice.id).first()
-
-    if not existing_escrow:
-        new_escrow = EscrowTransaction(
-            project_id=invoice.project_id,
-            invoice_id=invoice.id,
-            sender_id=invoice.client_id,
-            receiver_id=invoice.freelancer_id,
+    """Pay an invoice"""
+    try:
+        invoice = Invoice.query.get_or_404(invoice_id)
+        user_id = get_jwt_identity()
+        
+        # Verify authorization
+        if invoice.client_id != user_id:
+            return jsonify({"error": "Not authorized"}), 403
+        
+        # Get wallet
+        client_wallet = Wallet.query.filter_by(user_id=user_id).first()
+        if not client_wallet:
+            return jsonify({"error": "Wallet not found"}), 404
+        
+        # Check balance
+        if client_wallet.balance < invoice.amount:
+            return jsonify({"error": "Insufficient balance"}), 400
+        
+        # Process payment
+        client_wallet.debit(invoice.amount)
+        
+        # Create wallet transaction - THIS NEEDS THE IMPORT
+        wallet_tx = WalletTransaction(
+            wallet_id=client_wallet.id,
             amount=invoice.amount,
-            status="held",
-            created_at=datetime.utcnow(),
+            transaction_type="payment", 
+            description=f"Invoice {invoice.invoice_number}",
+            reference_id=invoice.id
         )
-        db.session.add(new_escrow)
-    else:
-        existing_escrow.status = "held"
-        existing_escrow.amount = invoice.amount
-        existing_escrow.created_at = datetime.utcnow()
-
-    invoice.status = "paid"
-    invoice.paid_at = datetime.utcnow()
-
-    db.session.commit()
-
-    return (
-        jsonify({"message": "Invoice paid and funds held in escrow", "invoice": invoice.to_dict()}),
-        200,
-    )
+        db.session.add(wallet_tx)
+        
+        # Update invoice
+        invoice.status = "paid"
+        invoice.paid_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Invoice paid",
+            "invoice": invoice.to_dict(),
+            "new_balance": float(client_wallet.balance)
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
 # -------------------- PATCH /api/invoices/<id> --------------------

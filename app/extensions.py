@@ -30,9 +30,9 @@ def init_extensions(app):
     if api_key:
         try:
             sg = sendgrid.SendGridAPIClient(api_key=api_key)
-            app.logger.info("✅ SendGrid client initialized")
+            app.logger.info("SendGrid client initialized")
         except Exception as e:
             sg = None
-            app.logger.error(f"❌ SendGrid init failed: {e}")
+            app.logger.error(f"SendGrid init failed: {e}")
     else:
-        app.logger.warning("⚠️ SENDGRID_API_KEY not set; email sending disabled")
+        app.logger.warning("SENDGRID_API_KEY not set; email sending disabled")

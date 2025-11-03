@@ -117,10 +117,12 @@ def send_password_reset_email(user) -> bool:
         "name",
         f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip() or "there",
     )
+    
+    # FIX: Use display_name instead of undefined 'name'
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h3 style="color:#2c3e50; font-weight:600; margin-bottom:16px;">Password Reset</h3>
-        <p style="font-size:15px; color:#333;">Hi <strong>{name}</strong>,</p>
+        <p style="font-size:15px; color:#333;">Hi <strong>{display_name}</strong>,</p>
         <p style="font-size:15px; color:#333; line-height:1.5;">We received a request to reset your ReelBrief password.</p>
         <p style="margin:24px 0;">
             <a href="{reset_link}"
@@ -206,21 +208,6 @@ def send_deliverable_approved_notification(deliverable, freelancer) -> bool:
         from_name="ReelBrief Notifications",
     )
 
-
-def send_deliverable_feedback_notification(deliverable, feedback, client) -> bool:
-    project_link = f"{BASE_URL}/projects/{deliverable.project_id}"
-    deliverable_link = f"{BASE_URL}/deliverables/{deliverable.id}"
-    status = (
-        "Revision requested"
-        if getattr(feedback, "is_revision_request", False)
-        else "Feedback received"
-    )
-    color = "#e67e22" if getattr(feedback, "is_revision_request", False) else "#3498db"
-    freelancer_email = (
-        getattr(deliverable, "freelancer_email", None)
-        or getattr(feedback.user, "email", None)
-        or getattr(client, "email", None)
-    )
 
 # ---- Deliverable feedback ----
 def send_deliverable_feedback_notification(deliverable, feedback, recipient_user) -> bool:
@@ -389,3 +376,39 @@ def send_refund_email(client, amount, project):
     </div>
     """
     return send_email(client.email, f"Refund Processed - {project.title}", html)
+
+def send_admin_freelancer_application_email(admin_email, freelancer_name, application_data):
+    """Send email to admin about new freelancer application"""
+    try:
+        subject = f"New Freelancer Application: {freelancer_name}"
+        
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h3 style="color:#17545B;">New Freelancer Application</h3>
+            <p>A new freelancer has applied to join the platform:</p>
+            
+            <div style="background:#f8f9fa; padding:16px; border-radius:6px; margin:16px 0;">
+                <p><strong>Name:</strong> {freelancer_name}</p>
+                <p><strong>Application Details:</strong> {application_data}</p>
+            </div>
+            
+            <p>Please review the application in the admin dashboard.</p>
+            
+            <p style="margin:24px 0;">
+                <a href="{BASE_URL}/admin/freelancers" 
+                   style="background:#17545B;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px;">
+                   Review Applications
+                </a>
+            </p>
+            
+            <p style="font-size:12px; color:#777;">
+                This is an automated notification from ReelBrief.
+            </p>
+        </div>
+        """
+        
+        return send_email(admin_email, subject, html, from_name="ReelBrief Admin Alerts")
+        
+    except Exception as e:
+        current_app.logger.error(f"Failed to send admin freelancer application email: {e}")
+        return False

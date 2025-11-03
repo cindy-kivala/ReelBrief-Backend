@@ -1,21 +1,32 @@
 """
-Portfolio API Routes
+Portfolio API Routes with Payment Integration
 Owner: Caleb (Portfolio display and management)
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
+
+# Core portfolio imports
 from app.services.portfolio_service import PortfolioService
 from app.models.portfolio_item import PortfolioItem
 from app.extensions import db
 
-portfolio_bp = Blueprint('portfolio', __name__, url_prefix='/api/portfolio')
+# Payment/Wallet imports
+from app.models.wallet import Wallet
+from app.models.wallet_transaction import WalletTransaction
+from app.models.escrow_transaction import EscrowTransaction
+from app.models.invoice import Invoice
+from app.models.project import Project
+from app.models.user import User
+from app.services.email_service import send_email, send_funds_released_email
 
+portfolio_bp = Blueprint('portfolio', __name__, url_prefix='/api/portfolio')
 
 @portfolio_bp.route('/freelancer/<int:freelancer_id>', methods=['GET'])
 def get_public_portfolio(freelancer_id):
     """
     Public endpoint - Get freelancer's portfolio with profile (only visible items)
-    No authentication required - public portfolio view
+    Includes payment/earnings summary if available
     """
     try:
         data = PortfolioService.get_freelancer_portfolio_with_profile(
@@ -26,199 +37,116 @@ def get_public_portfolio(freelancer_id):
         if not data:
             return jsonify({"error": "Freelancer portfolio not found"}), 404
         
-        return jsonify(data), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@portfolio_bp.route('/me', methods=['GET'])
-@jwt_required()
-def get_my_portfolio():
-    """
-    Private endpoint - Get current user's portfolio (includes hidden items)
-    For freelancers to manage their own portfolio
-    """
-    try:
-        current_user = get_jwt_identity()
-        user_id = current_user if isinstance(current_user, int) else current_user.get('id')
-        
-        data = PortfolioService.get_freelancer_portfolio_with_profile(
-            user_id,
-            include_hidden=True
-        )
-        
-        if not data:
-            return jsonify({"error": "Portfolio not found"}), 404
+        # Add payment/earnings information
+        try:
+            # Get freelancer's total earnings from wallet transactions
+            freelancer_wallet = Wallet.query.filter_by(user_id=freelancer_id).first()
+            if freelancer_wallet:
+                total_earnings = db.session.query(
+                    db.func.sum(WalletTransaction.amount)
+                ).filter(
+                    WalletTransaction.wallet_id == freelancer_wallet.id,
+                    WalletTransaction.transaction_type.in_(['release', 'credit'])
+                ).scalar() or 0
+                
+                data['payment_summary'] = {
+                    'total_earnings': float(total_earnings),
+                    'wallet_balance': float(freelancer_wallet.balance),
+                    'currency': freelancer_wallet.currency
+                }
+        except Exception as payment_error:
+            # Don't fail if payment data can't be loaded
+            print(f"Payment data load error: {payment_error}")
         
         return jsonify(data), 200
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@portfolio_bp.route('/item/<int:item_id>', methods=['PATCH'])
+@portfolio_bp.route('/me/earnings', methods=['GET'])
 @jwt_required()
-def update_portfolio_item(item_id):
+def get_my_earnings():
     """
-    Update portfolio item (visibility, featured, display_order, title, description, tags)
-    Only the owner freelancer can update their portfolio items
+    Get current freelancer's earnings and payment history
     """
     try:
-        current_user = get_jwt_identity()
-        user_id = current_user if isinstance(current_user, int) else current_user.get('id')
+        current_user_id = get_jwt_identity()
         
-        portfolio_item = PortfolioItem.query.get(item_id)
+        # Get wallet and transactions
+        wallet = Wallet.query.filter_by(user_id=current_user_id).first()
+        if not wallet:
+            return jsonify({"error": "Wallet not found"}), 404
         
-        if not portfolio_item:
-            return jsonify({"error": "Portfolio item not found"}), 404
+        # Get earnings transactions
+        earnings_transactions = WalletTransaction.query.filter(
+            WalletTransaction.wallet_id == wallet.id,
+            WalletTransaction.transaction_type.in_(['release', 'credit', 'payment_release'])
+        ).order_by(WalletTransaction.created_at.desc()).all()
         
-        # Verify ownership
-        if portfolio_item.freelancer_id != user_id:
-            return jsonify({"error": "Unauthorized - you can only edit your own portfolio items"}), 403
+        # Get pending escrow amounts
+        pending_escrow = EscrowTransaction.query.filter(
+            EscrowTransaction.receiver_id == current_user_id,
+            EscrowTransaction.status == 'held'
+        ).all()
         
-        data = request.get_json()
-        
-        # Update allowed fields
-        if 'is_visible' in data:
-            portfolio_item.is_visible = bool(data['is_visible'])
-        
-        if 'is_featured' in data:
-            portfolio_item.is_featured = bool(data['is_featured'])
-        
-        if 'display_order' in data:
-            portfolio_item.display_order = int(data['display_order'])
-        
-        if 'title' in data:
-            portfolio_item.title = data['title']
-        
-        if 'description' in data:
-            portfolio_item.description = data['description']
-        
-        if 'tags' in data:
-            portfolio_item.tags = data['tags']
-        
-        db.session.commit()
+        total_pending = sum(float(escrow.amount) for escrow in pending_escrow)
         
         return jsonify({
-            "message": "Portfolio item updated successfully",
-            "item": portfolio_item.to_dict()
+            "wallet_balance": float(wallet.balance),
+            "total_earnings": float(sum(tx.amount for tx in earnings_transactions)),
+            "pending_earnings": total_pending,
+            "currency": wallet.currency,
+            "recent_transactions": [tx.to_dict() for tx in earnings_transactions[:10]],
+            "pending_payments": [escrow.to_dict() for escrow in pending_escrow]
         }), 200
         
     except Exception as e:
-        db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-
-@portfolio_bp.route('/item/<int:item_id>', methods=['DELETE'])
+@portfolio_bp.route('/project/<int:project_id>/payment-status', methods=['GET'])
 @jwt_required()
-def delete_portfolio_item(item_id):
+def get_project_payment_status(project_id):
     """
-    Delete a portfolio item
-    Only the owner freelancer can delete their portfolio items
+    Get payment status for a specific project in portfolio
     """
     try:
-        current_user = get_jwt_identity()
-        user_id = current_user if isinstance(current_user, int) else current_user.get('id')
+        current_user_id = get_jwt_identity()
         
-        portfolio_item = PortfolioItem.query.get(item_id)
-        
-        if not portfolio_item:
-            return jsonify({"error": "Portfolio item not found"}), 404
-        
-        # Verify ownership
-        if portfolio_item.freelancer_id != user_id:
-            return jsonify({"error": "Unauthorized"}), 403
-        
-        db.session.delete(portfolio_item)
-        db.session.commit()
-        
-        return jsonify({"message": "Portfolio item deleted successfully"}), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@portfolio_bp.route('/reorder', methods=['POST'])
-@jwt_required()
-def reorder_portfolio_items():
-    """
-    Reorder portfolio items
-    Expects: {"items": [{"id": 1, "display_order": 0}, {"id": 2, "display_order": 1}, ...]}
-    """
-    try:
-        current_user = get_jwt_identity()
-        user_id = current_user if isinstance(current_user, int) else current_user.get('id')
-        
-        data = request.get_json()
-        
-        if 'items' not in data:
-            return jsonify({"error": "Missing 'items' field"}), 400
-        
-        updated_count = 0
-        
-        for item_data in data['items']:
-            item_id = item_data.get('id')
-            new_order = item_data.get('display_order')
-            
-            if item_id is None or new_order is None:
-                continue
-            
-            portfolio_item = PortfolioItem.query.get(item_id)
-            
-            # Skip if not found or not owned by user
-            if not portfolio_item or portfolio_item.freelancer_id != user_id:
-                continue
-            
-            portfolio_item.display_order = new_order
-            updated_count += 1
-        
-        db.session.commit()
-        
-        return jsonify({
-            "message": "Portfolio items reordered successfully",
-            "updated_count": updated_count
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@portfolio_bp.route('/project/<int:project_id>/create', methods=['POST'])
-@jwt_required()
-def manually_create_portfolio(project_id):
-    """
-    Manually create portfolio item for a project
-    Useful for freelancers who want to add a project manually
-    """
-    try:
-        current_user = get_jwt_identity()
-        user_id = current_user if isinstance(current_user, int) else current_user.get('id')
-        
-        from app.models.project import Project
         project = Project.query.get(project_id)
-        
         if not project:
             return jsonify({"error": "Project not found"}), 404
         
-        # Check if user is the freelancer
-        if project.freelancer_id != user_id:
-            return jsonify({"error": "Unauthorized - you can only create portfolio items for your own projects"}), 403
+        # Verify user owns this project
+        if project.freelancer_id != current_user_id:
+            return jsonify({"error": "Unauthorized"}), 403
         
-        portfolio_item = PortfolioService.create_portfolio_from_project(
-            project_id=project.id,
-            freelancer_id=project.freelancer_id
-        )
+        # Get escrow transactions for this project
+        escrow_transactions = EscrowTransaction.query.filter_by(
+            project_id=project_id
+        ).order_by(EscrowTransaction.created_at.desc()).all()
         
-        if not portfolio_item:
-            return jsonify({"error": "Failed to create portfolio item"}), 500
+        # Get related invoices
+        invoices = Invoice.query.filter_by(project_id=project_id).all()
         
-        return jsonify({
-            "message": "Portfolio item created successfully",
-            "portfolio_item": portfolio_item.to_dict()
-        }), 201
+        payment_status = {
+            "project_id": project_id,
+            "project_title": project.title,
+            "budget": float(project.budget) if project.budget else 0,
+            "escrow_transactions": [escrow.to_dict() for escrow in escrow_transactions],
+            "invoices": [invoice.to_dict() for invoice in invoices],
+            "total_released": sum(
+                float(escrow.amount) 
+                for escrow in escrow_transactions 
+                if escrow.status == 'released'
+            ),
+            "total_held": sum(
+                float(escrow.amount) 
+                for escrow in escrow_transactions 
+                if escrow.status == 'held'
+            )
+        }
+        
+        return jsonify(payment_status), 200
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500

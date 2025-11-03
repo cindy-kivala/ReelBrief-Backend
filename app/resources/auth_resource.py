@@ -69,8 +69,6 @@ def register():
     try:
         current_app.logger.info(f"/register form: {list(request.form.keys())}")
         current_app.logger.info(f"/register files: {list(request.files.keys())}")
-        print("/register form keys:", list(request.form.keys()))
-        print("/register files:", list(request.files.keys()))
 
         data = request.form
         file = request.files.get("cv")
@@ -80,22 +78,24 @@ def register():
         if missing:
             return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
 
+        # Check if user already exists FIRST
         if User.query.filter_by(email=data["email"]).first():
             return jsonify({"error": "Email already exists"}), 409
 
         # Create user
         user = User(
             email=data["email"],
-            password_hash=generate_password_hash(data["password"]),
-            role=data["role"],
             first_name=data["first_name"],
             last_name=data["last_name"],
+            role=data["role"],
+            is_verified=True,  # Auto-verify for now
             is_active=True,
-            is_verified=True,
         )
+        user.set_password(data["password"])
 
         db.session.add(user)
-        db.session.flush()
+        db.session.flush()  # Get user ID without committing
+
         current_app.logger.info(f"Created user {user.email} ({user.role})")
 
         # Handle CV upload and create FreelancerProfile for freelancers
@@ -111,7 +111,6 @@ def register():
             os.makedirs(upload_dir, exist_ok=True)
 
             import uuid
-
             from werkzeug.utils import secure_filename
 
             filename = secure_filename(file.filename)
@@ -139,23 +138,33 @@ def register():
                 current_app.logger.info(f"Created FreelancerProfile for user {user.id}")
             except Exception as e:
                 current_app.logger.error(f"Failed to create FreelancerProfile: {str(e)}")
-                pass
+                # Continue without profile - don't fail registration
+
+        # Create wallet for user
+        from app.models.wallet import Wallet
+        wallet = Wallet(user_id=user.id, balance=1000.00 if user.role == 'client' else 500.00)
+        db.session.add(wallet)
 
         # Commit all changes
         db.session.commit()
 
-        # Send confirmation email (no token)
+        # Send confirmation email
         try:
             send_confirmation_email(user)
             current_app.logger.info(f"Confirmation email sent to {user.email}")
         except Exception as e:
             current_app.logger.error(f"Failed to send confirmation email: {str(e)}")
 
+        # Create access token
+        from flask_jwt_extended import create_access_token
+        access_token = create_access_token(identity=user.id)
+
         return (
             jsonify(
                 {
-                    "message": "User registered successfully.",
+                    "message": "User registered successfully",
                     "user": user.to_dict(),
+                    "access_token": access_token
                 }
             ),
             201,
@@ -163,59 +172,9 @@ def register():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"REGISTER CRASH: {str(e)}")
+        current_app.logger.error(f"REGISTER ERROR: {str(e)}")
+        import traceback
         current_app.logger.error(traceback.format_exc())
-        db.session.commit()
-        print(f"Created user {user.email} ({user.role})")
-
-        if file and user.role == "freelancer":
-            os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-            file_path = os.path.join(UPLOAD_DIR, file.filename)
-            file.save(file_path)
-            print(f"CV saved to {file_path}")
-
-            profile_obj: Optional[object] = None
-            if FreelancerProfile is not None:
-                try:
-                    profile_obj = FreelancerProfile(
-                        user_id=user.id,
-                        cv_filename=file.filename,
-                        cv_url=f"/uploads/{file.filename}",
-                        cv_uploaded_at=datetime.utcnow(),
-                        application_status="pending",
-                    )
-                    db.session.add(profile_obj)
-                    db.session.commit()
-                    print("FreelancerProfile created (pending)")
-                except Exception as e:
-                    print(f"Could not create FreelancerProfile: {e}")
-
-            try:
-                sent_admin = send_admin_freelancer_application_email(user, profile_obj)
-                print(f"Admin alert about freelancer CV sent? {sent_admin}")
-            except Exception as e:
-                print(f"Admin alert email failed: {e}")
-
-        if AUTO_VERIFY_EMAILS:
-            user.is_verified = True
-            user.is_active = True
-            user.verification_token = None
-            db.session.commit()
-            print("AUTO_VERIFY_EMAILS=true → user auto-verified.")
-        else:
-            try:
-                ok, token = send_verification_email(user.email, user.id)
-                user.verification_token = token
-                db.session.commit()
-                print(f"Verification email → {user.email} | sent={ok}")
-            except Exception as e:
-                print(f"Verification email failed: {e}")
-
-        return jsonify({"message": "User registered successfully."}), 201
-
-    except Exception as e:
-        print("REGISTER CRASH:", e)
         return jsonify({"error": "Registration failed"}), 500
 
 
@@ -281,7 +240,7 @@ def refresh():
         return jsonify({"error": "Token refresh failed"}), 500
 
 
--------------------- Current User --------------------
+#------------------- Current User --------------------
 @auth_bp.post("/verify-email")
 def verify_email():
     """
@@ -314,15 +273,15 @@ def verify_email():
     return jsonify({"message": "Email verified successfully"}), 200
 
 
-@auth_bp.post("/refresh")
-@jwt_required(refresh=True)
-def refresh():
-    """
-    Exchange a refresh token for a new access token.
-    """
-    current_user_id = get_jwt_identity()
-    new_access = create_access_token(identity=current_user_id, expires_delta=timedelta(hours=3))
-    return jsonify({"access_token": new_access}), 200
+# @auth_bp.post("/refresh")
+# @jwt_required(refresh=True)
+# def refresh():
+#     """
+#     Exchange a refresh token for a new access token.
+#     """
+#     current_user_id = get_jwt_identity()
+#     new_access = create_access_token(identity=current_user_id, expires_delta=timedelta(hours=3))
+#     return jsonify({"access_token": new_access}), 200
 
 
 @auth_bp.get("/me")

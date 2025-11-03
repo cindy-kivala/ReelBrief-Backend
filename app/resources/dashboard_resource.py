@@ -41,7 +41,7 @@ def get_stats():
         total_projects = Project.query.count()
         total_users = User.query.count()
         escrow_released = EscrowTransaction.query.filter_by(status="released").count()
-        escrow_in_escrow = EscrowTransaction.query.filter_by(status="in_escrow").count()
+        escrow_in_escrow = EscrowTransaction.query.filter_by(status="held").count()
 
         stats = [
             {"label": "Total Users", "value": total_users, "color": "blue"},
@@ -170,13 +170,13 @@ def recent_transactions():
 
     # Admin: see all transactions
     if role == "admin":
-        txs = EscrowTransaction.query.order_by(EscrowTransaction.held_at.desc()).limit(5).all()
+        txs = EscrowTransaction.query.order_by(EscrowTransaction.created_at.desc()).limit(5).all()
 
     # Client: show transactions where they are the sender
     elif role == "client":
         txs = (
             EscrowTransaction.query.filter_by(sender_id=user_id)
-            .order_by(EscrowTransaction.held_at.desc())
+            .order_by(EscrowTransaction.created_at.desc())
             .limit(5)
             .all()
         )
@@ -185,7 +185,7 @@ def recent_transactions():
     elif role == "freelancer":
         txs = (
             EscrowTransaction.query.filter_by(receiver_id=user_id)
-            .order_by(EscrowTransaction.held_at.desc())
+            .order_by(EscrowTransaction.created_at.desc())
             .limit(5)
             .all()
         )

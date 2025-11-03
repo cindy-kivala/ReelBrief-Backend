@@ -16,7 +16,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.extensions import db
 from app.models.user import User
 from app.schemas.user_schema import user_schema, users_schema
-from app.utils.decorators import role_required  # ✅ FIXED PATH
+from app.utils.decorators import role_required  
 
 user_bp = Blueprint("user_bp", __name__)
 
@@ -24,16 +24,24 @@ user_bp = Blueprint("user_bp", __name__)
 # -------------------- GET USER BY ID --------------------
 @user_bp.route("/<int:id>", methods=["GET"])
 @jwt_required()
-def get_users():
-    current_user = get_jwt_identity()
-    user = User.query.get(current_user["id"])
+def get_user(id):  # ← ADD THE 'id' PARAMETER HERE
+    """
+    Get a user's profile by ID.
+    Only the user themselves or an admin can access this.
+    """
+    current_user_id = get_jwt_identity()
+    current_user = User.query.get(current_user_id)
 
-    if not user or user.role != "admin":
-        return jsonify({"error": "Unauthorized"}), 403
+    if not current_user:
+        return jsonify({"error": "Unauthorized"}), 401
 
-    # returning user data properly
-    users = User.query.all()
-    return jsonify([user.to_dict() for user in users])
+    user = User.query.get_or_404(id)
+
+    # Non-admins can only view their own profile
+    if current_user.id != user.id and current_user.role != "admin":
+        return jsonify({"error": "You are not authorized to view this profile"}), 403
+
+    return jsonify(user.to_dict()), 200
 
 
 # @jwt_required()
