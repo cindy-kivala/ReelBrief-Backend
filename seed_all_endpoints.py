@@ -1,5 +1,6 @@
 """
-FINAL WORKING SEED FILE - FIXED DECIMAL MULTIPLICATION
+UPDATED SEED FILE - WITH PORTFOLIO SUPPORT
+Added: location, professional_title, avatar_url, and image deliverables
 """
 
 from app import create_app, db
@@ -64,9 +65,12 @@ def seed_skills():
     db.session.commit()
     return created_skills
 
-def seed_users():
-    """Create users for testing ALL endpoints"""
-    print("\n👥 Creating users for all endpoint testing...")
+# def seed_users():
+#     """Create users for testing ALL endpoints"""
+#     print("\n👥 Creating users for all endpoint testing...")
+def seed_users(skills):
+    """Create users for testing ALL endpoints - WITH PORTFOLIO DATA"""
+    print("\n👥 Creating users with portfolio data...")
     
     # First, get all skills from the database
     skills = {skill.name: skill for skill in Skill.query.all()}
@@ -80,7 +84,11 @@ def seed_users():
             'first_name': 'Admin',
             'last_name': 'User',
             'role': 'admin',
-            'is_verified': True
+            'is_verified': True,
+            'location': 'Nairobi, Kenya',
+            'professional_title': 'Platform Administrator',
+            'avatar_url': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
+            'bio': 'Platform administrator ensuring smooth operations.'
         },
         
         # Client Users - for client endpoints (ADDED MORE CLIENTS)
@@ -90,7 +98,11 @@ def seed_users():
             'first_name': 'Sarah',
             'last_name': 'Johnson',
             'role': 'client',
-            'is_verified': True
+            'is_verified': True,
+            'location': 'San Francisco, USA',
+            'professional_title': 'Tech Startup Founder',
+            'avatar_url': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+            'bio': 'Building innovative products that change the world.'
         },
         {
             'email': 'mike@creativeagency.com',
@@ -98,7 +110,11 @@ def seed_users():
             'first_name': 'Mike',
             'last_name': 'Chen',
             'role': 'client',
-            'is_verified': True
+            'is_verified': True,
+            'location': 'London, UK',
+            'professional_title': 'Creative Director',
+            'avatar_url': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+            'bio': 'Leading creative campaigns for global brands.'
         },
         {
             'email': 'emma@fashionbrand.com',
@@ -141,11 +157,16 @@ def seed_users():
             'last_name': 'Thompson',
             'role': 'freelancer',
             'is_verified': True,
+            'location': 'Berlin, Germany',
+            'professional_title': 'Senior UI/UX Designer',
+            'avatar_url': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
+            'bio': 'Passionate UI/UX designer with 5+ years experience creating beautiful, user-centered digital experiences.',
             'profile': {
                 'name': 'Alex Thompson',
                 'email': 'alex@designer.com',
                 'bio': 'UI/UX designer with 5+ years experience creating beautiful and functional digital products.',
                 'hourly_rate': 85.00,
+                'years_experience': 5,
                 'portfolio_url': 'https://alexthompson.design',
                 'open_to_work': True,
                 'application_status': 'approved',
@@ -159,11 +180,16 @@ def seed_users():
             'last_name': 'Patel',
             'role': 'freelancer',
             'is_verified': True,
+            'location': 'Mumbai, India',
+            'professional_title': 'Full-Stack Developer & Video Editor',
+            'avatar_url': 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400',
+            'bio': 'Full-stack developer specializing in React and Node.js, with a passion for video production.',
             'profile': {
                 'name': 'Priya Patel',
                 'email': 'priya@developer.com',
                 'bio': 'Full-stack developer specializing in React, Node.js, and Python with video editing skills.',
                 'hourly_rate': 95.00,
+                'years_experience': 7,
                 'portfolio_url': 'https://priyapatel.dev',
                 'open_to_work': True,
                 'application_status': 'approved',
@@ -177,11 +203,16 @@ def seed_users():
             'last_name': 'Martinez',
             'role': 'freelancer',
             'is_verified': True,
+            'location': 'Barcelona, Spain',
+            'professional_title': '3D Animator & Motion Designer',
+            'avatar_url': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+            'bio': '3D animator and motion graphics artist bringing ideas to life through stunning visuals.',
             'profile': {
                 'name': 'Carlos Martinez',
                 'email': 'carlos@animator.com',
                 'bio': '3D animator and motion graphics artist with expertise in Blender and Cinema 4D.',
                 'hourly_rate': 110.00,
+                'years_experience': 8,
                 'portfolio_url': 'https://carlosanimation.com',
                 'open_to_work': True,
                 'application_status': 'approved',
@@ -195,11 +226,16 @@ def seed_users():
             'last_name': 'Zhang',
             'role': 'freelancer',
             'is_verified': True,
+            'location': 'Toronto, Canada',
+            'professional_title': 'Content Writer & Copywriter',
+            'avatar_url': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+            'bio': 'Content writer and copywriter crafting compelling stories that convert.',
             'profile': {
                 'name': 'Lisa Zhang',
                 'email': 'lisa@writer.com',
                 'bio': 'Content writer and copywriter specializing in tech and marketing content.',
                 'hourly_rate': 65.00,
+                'years_experience': 4,
                 'portfolio_url': 'https://lisazhangwriting.com',
                 'open_to_work': False,  # For testing availability toggle
                 'application_status': 'approved',
@@ -213,11 +249,16 @@ def seed_users():
             'last_name': 'Garcia',
             'role': 'freelancer',
             'is_verified': True,
+            'location': 'Miami, USA',
+            'professional_title': 'Digital Marketing Specialist',
+            'avatar_url': 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=400',
+            'bio': 'Digital marketing expert helping brands grow their online presence.',
             'profile': {
                 'name': 'Sophia Garcia',
                 'email': 'sophia@marketing.com',
                 'bio': 'Digital marketing expert with focus on social media and analytics.',
                 'hourly_rate': 75.00,
+                'years_experience': 6,
                 'portfolio_url': 'https://sophiamarketing.com',
                 'open_to_work': True,
                 'application_status': 'pending',  # For testing approval endpoints
@@ -362,7 +403,11 @@ def seed_users():
             last_name=user_data['last_name'],
             role=user_data['role'],
             is_verified=user_data['is_verified'],
-            is_active=True
+            is_active=True,
+            location=user_data.get('location'),
+            professional_title=user_data.get('professional_title'),
+            avatar_url=user_data.get('avatar_url'),
+            bio=user_data.get('bio')
         )
         user.set_password(user_data['password'])
         db.session.add(user)
@@ -376,6 +421,7 @@ def seed_users():
                 email=profile_data['email'],
                 bio=profile_data['bio'],
                 hourly_rate=profile_data['hourly_rate'],
+                years_experience=profile_data.get('years_experience'),
                 portfolio_url=profile_data['portfolio_url'],
                 open_to_work=profile_data['open_to_work'],
                 application_status=profile_data['application_status']
@@ -404,7 +450,7 @@ def seed_users():
                     print(f"   ⚠️  Skill '{skill_name}' not found for {profile_data['name']}")
         
         created_users[user_data['email']] = user
-        print(f"   ✅ {user.role}: {user.email}")
+        print(f"   ✅ {user.role}: {user.email} ({user.professional_title})")
     
     db.session.commit()
     return created_users
@@ -423,125 +469,68 @@ def seed_projects_with_approval_workflow(users):
     projects_data = [
         # SUBMITTED - Awaiting admin approval
         {
-            'title': 'E-Commerce Website Redesign',
-            'description': 'Complete redesign of e-commerce platform with modern UI/UX and improved user flow',
-            'budget': 8000.00,
-            'deadline': datetime.utcnow() + timedelta(days=60),
-            'client_email': 'sarah@techstartup.com',
-            'status': 'submitted',
-            'project_type': 'web',
-            'skills': ['UI/UX Design', 'Figma', 'React', 'Web Design']
-        },
-        {
-            'title': 'Mobile App Development',
-            'description': 'iOS and Android app for fitness tracking with social features',
-            'budget': 15000.00,
-            'deadline': datetime.utcnow() + timedelta(days=90),
-            'client_email': 'mike@creativeagency.com',
-            'status': 'submitted',
-            'project_type': 'development',
-            'skills': ['Mobile Development', 'React', 'Node.js', 'React Native']
-        },
-        {
-            'title': 'Brand Identity Design',
-            'description': 'Complete brand identity including logo, color palette, and brand guidelines',
-            'budget': 3500.00,
-            'deadline': datetime.utcnow() + timedelta(days=30),
-            'client_email': 'emma@fashionbrand.com',
-            'status': 'submitted',
-            'project_type': 'design',
-            'skills': ['Graphic Design', 'Illustration', 'Branding']
-        },
-        
-        # APPROVED - Freelancer shortlist sent, awaiting assignment
-        {
-            'title': 'Brand Identity Video',
-            'description': 'Promotional video for new brand launch with motion graphics',
+            'title': 'Mobile App UI/UX Redesign',
+            'description': 'Complete mobile app redesign project with modern interface and improved user experience',
             'budget': 5000.00,
+            'deadline': datetime.utcnow() + timedelta(days=30),
+            'client_email': 'sarah@techstartup.com',
+            'freelancer_email': 'alex@designer.com',
+            'status': 'active',
+            'project_type': 'UI/UX Design'
+        },
+        {
+            'title': 'Product Launch Video',
+            'description': 'Promotional video for product launch with motion graphics and professional editing',
+            'budget': 8000.00,
             'deadline': datetime.utcnow() + timedelta(days=45),
-            'client_email': 'sarah@techstartup.com',
-            'status': 'approved',
-            'approved_at': datetime.utcnow() - timedelta(days=2),
-            'project_type': 'video',
-            'skills': ['Video Editing', 'Motion Graphics', 'After Effects']
-        },
-        {
-            'title': 'Healthcare App UI/UX',
-            'description': 'User interface and experience design for healthcare mobile application',
-            'budget': 7000.00,
-            'deadline': datetime.utcnow() + timedelta(days=50),
-            'client_email': 'david@healthtech.com',
-            'status': 'approved',
-            'approved_at': datetime.utcnow() - timedelta(days=1),
-            'project_type': 'design',
-            'skills': ['UI/UX Design', 'Figma', 'Prototyping', 'User Research']
-        },
-        
-        # NOT_FEASIBLE - Rejected by admin
-        {
-            'title': 'Complex AI Integration',
-            'description': 'Advanced machine learning system for predictive analytics',
-            'budget': 25000.00,
-            'deadline': datetime.utcnow() + timedelta(days=30),
             'client_email': 'mike@creativeagency.com',
-            'status': 'not_feasible',
-            'rejection_reason': 'No freelancers currently available with required AI/ML expertise at this proficiency level',
-            'project_type': 'development',
-            'skills': ['Python', 'Machine Learning']  # Skills that no one has
+            'freelancer_email': 'priya@developer.com',
+            'status': 'active',
+            'project_type': 'Video Production'
         },
-        
-        # ASSIGNED - Freelancer already assigned
         {
-            'title': 'Content Writing Series',
-            'description': 'Blog post series for marketing campaign across multiple platforms',
-            'budget': 3000.00,
-            'deadline': datetime.utcnow() + timedelta(days=30),
+            'title': '3D Logo Animation',
+            'description': 'Animated 3D logo for brand identity with multiple variations',
+            'budget': 3500.00,
+            'deadline': datetime.utcnow() + timedelta(days=25),
             'client_email': 'sarah@techstartup.com',
+            'freelancer_email': 'carlos@animator.com',
+            'status': 'active',
+            'project_type': '3D Animation'
+        },
+        {
+            'title': 'Website Content Writing',
+            'description': 'SEO-optimized content creation for website pages',
+            'budget': 2000.00,
+            'deadline': datetime.utcnow() + timedelta(days=20),
+            'client_email': 'mike@creativeagency.com', 
             'freelancer_email': 'lisa@writer.com',
-            'status': 'assigned',
-            'approved_at': datetime.utcnow() - timedelta(days=5),
-            'assigned_at': datetime.utcnow() - timedelta(days=2),
-            'project_type': 'writing',
-            'skills': ['Content Writing', 'SEO', 'Marketing Copy']
-        },
-        {
-            'title': 'Educational Platform Development',
-            'description': 'Full-stack development of online learning platform',
-            'budget': 12000.00,
-            'deadline': datetime.utcnow() + timedelta(days=75),
-            'client_email': 'lisa@edtech.org',
-            'freelancer_email': 'taylor@fullstack.io',
-            'status': 'assigned',
-            'approved_at': datetime.utcnow() - timedelta(days=7),
-            'assigned_at': datetime.utcnow() - timedelta(days=3),
-            'project_type': 'development',
-            'skills': ['React', 'Node.js', 'Python', 'PostgreSQL']
+            'status': 'active',
+            'project_type': 'Content Writing'
         },
         
-        # APPROVED with assignment_requested = True
+        # Completed projects for testing reviews and portfolios
         {
-            'title': '3D Product Animation',
-            'description': 'Create 3D animated product showcase for marketing materials',
-            'budget': 4500.00,
-            'deadline': datetime.utcnow() + timedelta(days=40),
-            'client_email': 'mike@creativeagency.com',
-            'status': 'approved',
-            'approved_at': datetime.utcnow() - timedelta(days=1),
-            'assignment_requested': True,
-            'project_type': 'animation',
-            'skills': ['Blender', '3D Animation', 'Cinema 4D']
+            'title': 'E-commerce Website Design',
+            'description': 'Complete e-commerce website design with user-friendly interface and modern aesthetics',
+            'budget': 3000.00,
+            'deadline': datetime.utcnow() - timedelta(days=10),
+            'client_email': 'sarah@techstartup.com',
+            'freelancer_email': 'alex@designer.com',
+            'status': 'completed',
+            'completed_at': datetime.utcnow() - timedelta(days=5),
+            'project_type': 'Web Design'
         },
         {
-            'title': 'Social Media Marketing Campaign',
-            'description': 'Comprehensive social media marketing strategy and content creation',
-            'budget': 6000.00,
-            'deadline': datetime.utcnow() + timedelta(days=60),
-            'client_email': 'james@fintech.io',
-            'status': 'approved',
-            'approved_at': datetime.utcnow() - timedelta(days=2),
-            'assignment_requested': True,
-            'project_type': 'marketing',
-            'skills': ['Social Media Marketing', 'Content Writing', 'Analytics']
+            'title': 'Social Media Campaign',
+            'description': 'Comprehensive social media marketing campaign with graphics and copy',
+            'budget': 4500.00,
+            'deadline': datetime.utcnow() - timedelta(days=15),
+            'client_email': 'mike@creativeagency.com',
+            'freelancer_email': 'priya@developer.com',
+            'status': 'completed',
+            'completed_at': datetime.utcnow() - timedelta(days=8),
+            'project_type': 'Marketing'
         }
     ]
     
@@ -555,7 +544,7 @@ def seed_projects_with_approval_workflow(users):
             deadline=proj_data['deadline'],
             status=proj_data['status'],
             project_type=proj_data.get('project_type'),
-            created_at=datetime.utcnow() - timedelta(days=random.randint(1, 10))
+            created_at=datetime.utcnow() - timedelta(days=random.randint(5, 60))
         )
         
         project.client_id = users[proj_data['client_email']].id
@@ -604,42 +593,38 @@ def seed_projects_with_approval_workflow(users):
     db.session.commit()
     return created_projects
 
-def seed_escrows(users, projects_info):
-    """Create escrows for escrow endpoint testing"""
-    print("\n💰 Creating escrow transactions for endpoint testing...")
-    
-    admin_user = users['admin@reelbrief.com']
-    
-    for i, project_info in enumerate(projects_info):
-        project = project_info['project']
-        
-        if project.freelancer_id and project.status in ['active', 'completed']:
-            escrow = EscrowTransaction(
-                project_id=project.id,
-                client_id=project.client_id,
-                freelancer_id=project.freelancer_id,
-                admin_id=admin_user.id,  # Required field
-                amount=project.budget,
-                currency="USD",
-                status='released' if project.status == 'completed' else 'held',
-                invoice_number=f"INV-{project.id:04d}-{random.randint(1000, 9999)}",  # Required field
-                invoice_url=f"https://example.com/invoices/INV-{project.id:04d}",
-                payment_method="credit_card",
-                held_at=project.created_at,  # Use held_at instead of created_at
-                notes=f"Escrow for project: {project.title}"
-            )
-            
-            if project.status == 'completed':
-                escrow.released_at = datetime.utcnow() - timedelta(days=5)
-            
-            db.session.add(escrow)
-            print(f"   ✅ ${escrow.amount} - {escrow.status}")
-    
-    db.session.commit()
-
 def seed_deliverables(projects_info):
-    """Create deliverables with different statuses for testing"""
-    print("\n📦 Creating deliverables for endpoint testing...")
+    """Create deliverables with IMAGE files for portfolio cover images"""
+    print("\n📦 Creating deliverables with images for portfolio...")
+    
+    # Sample image URLs for different project types
+    sample_images = {
+        'UI/UX Design': [
+            'https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?w=800',
+            'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=800',
+            'https://images.unsplash.com/photo-1559028012-481c04fa702d?w=800'
+        ],
+        'Web Design': [
+            'https://images.unsplash.com/photo-1547658719-da2b51169166?w=800',
+            'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800'
+        ],
+        'Video Production': [
+            'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=800',
+            'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800'
+        ],
+        '3D Animation': [
+            'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800',
+            'https://images.unsplash.com/photo-1614853316476-de00d14cb1fc?w=800'
+        ],
+        'Content Writing': [
+            'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800',
+            'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800'
+        ],
+        'Marketing': [
+            'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800',
+            'https://images.unsplash.com/photo-1533750349088-cd871a92f312?w=800'
+        ]
+    }
     
     deliverable_statuses = ['approved', 'pending', 'revision_requested', 'rejected']
     
@@ -647,17 +632,24 @@ def seed_deliverables(projects_info):
         project = project_info['project']
         
         if project.freelancer_id:
+            project_type = project.project_type or 'UI/UX Design'
+            images = sample_images.get(project_type, sample_images['UI/UX Design'])
+            
             # Create 2-3 deliverables per project with different statuses
             for i in range(1, random.randint(2, 4)):
-                status = random.choice(deliverable_statuses)
+                status = random.choice(deliverable_statuses) if project.status != 'completed' else 'approved'
+                
+                # Use image for first deliverable, document for others
+                is_image = (i == 1 and status == 'approved')
                 
                 deliverable = Deliverable(
                     project_id=project.id,
                     uploaded_by=project.freelancer_id,
                     title=f'Deliverable {i} for {project.title}',
                     version_number=i,
-                    file_url=f'https://example.com/project-{project.id}-v{i}.pdf',
-                    file_type='document',
+                    file_url=random.choice(images) if is_image else f'https://example.com/project-{project.id}-v{i}.pdf',
+                    file_type='image' if is_image else 'document',
+                    thumbnail_url=random.choice(images) if is_image else None,
                     status=status,
                     description=f'Version {i} deliverable for {project.title}',
                     uploaded_at=datetime.utcnow() - timedelta(days=random.randint(1, 20))
@@ -670,11 +662,44 @@ def seed_deliverables(projects_info):
                 db.session.add(deliverable)
     
     db.session.commit()
-    print("   ✅ Created deliverables with various statuses")
+    print("   ✅ Created deliverables with images for portfolio covers")
+
+def seed_escrows(users, projects_info):
+    """Create escrows for escrow endpoint testing"""
+    print("\n💰 Creating escrow transactions...")
+    
+    admin_user = users['admin@reelbrief.com']
+    
+    for i, project_info in enumerate(projects_info):
+        project = project_info['project']
+        
+        if project.freelancer_id and project.status in ['active', 'completed']:
+            escrow = EscrowTransaction(
+                project_id=project.id,
+                client_id=project.client_id,
+                freelancer_id=project.freelancer_id,
+                admin_id=admin_user.id,
+                amount=project.budget,
+                currency="USD",
+                status='released' if project.status == 'completed' else 'held',
+                invoice_number=f"INV-{project.id:04d}-{random.randint(1000, 9999)}",
+                invoice_url=f"https://example.com/invoices/INV-{project.id:04d}",
+                payment_method="credit_card",
+                held_at=project.created_at,
+                notes=f"Escrow for project: {project.title}"
+            )
+            
+            if project.status == 'completed':
+                escrow.released_at = datetime.utcnow() - timedelta(days=5)
+            
+            db.session.add(escrow)
+            print(f"   ✅ ${escrow.amount} - {escrow.status}")
+    
+    db.session.commit()
 
 def seed_feedback():
     """Create feedback for feedback endpoint testing"""
-    print("\n💬 Creating feedback for endpoint testing...")
+    print("\n💬 Creating feedback...")
     
     deliverables = Deliverable.query.all()
     feedback_messages = [
@@ -689,7 +714,6 @@ def seed_feedback():
     feedback_count = 0
     for deliverable in deliverables:
         if deliverable.status in ['revision_requested', 'rejected']:
-            # Create feedback that needs resolution
             feedback = Feedback(
                 deliverable_id=deliverable.id,
                 user_id=deliverable.project.client_id,
@@ -703,11 +727,11 @@ def seed_feedback():
             feedback_count += 1
     
     db.session.commit()
-    print(f"   ✅ Created {feedback_count} feedback items")
+    print(f"    Created {feedback_count} feedback items")
 
 def seed_reviews(projects_info):
     """Create reviews for review endpoint testing"""
-    print("\n⭐ Creating reviews for endpoint testing...")
+    print("\n Creating reviews...")
     
     review_comments = [
         "Excellent work! Very professional and delivered on time.",
@@ -722,7 +746,6 @@ def seed_reviews(projects_info):
         project = project_info['project']
         
         if project.status == 'completed' and project.freelancer_id:
-            # Client reviews freelancer
             review = Review(
                 project_id=project.id,
                 client_id=project.client_id,
@@ -735,11 +758,11 @@ def seed_reviews(projects_info):
             review_count += 1
     
     db.session.commit()
-    print(f"   ✅ Created {review_count} reviews")
+    print(f"   Created {review_count} reviews")
 
 def seed_invoices(projects_info):
-    """Create invoices with different statuses for testing"""
-    print("\n🧾 Creating invoices for endpoint testing...")
+    """Create invoices with different statuses"""
+    print("\n Creating invoices...")
     
     invoice_statuses = ['unpaid', 'paid', 'overdue', 'cancelled']
     invoice_count = 0
@@ -748,7 +771,6 @@ def seed_invoices(projects_info):
         project = project_info['project']
         
         if project.freelancer_id:
-            # Convert Decimal to float for multiplication, then back to Decimal
             budget_float = float(project.budget)
             invoice_amount = Decimal(str(budget_float * random.uniform(0.3, 0.8)))
             
@@ -773,11 +795,11 @@ def seed_invoices(projects_info):
             invoice_count += 1
     
     db.session.commit()
-    print(f"   ✅ Created {invoice_count} invoices")
+    print(f"    Created {invoice_count} invoices")
 
 def seed_activity_logs(users, projects_info):
-    """Create activity logs for dashboard testing"""
-    print("\n📊 Creating activity logs for dashboard...")
+    """Create activity logs for dashboard"""
+    print("\n Creating activity logs...")
     
     activities = [
         {"action": "created a new project", "resource_type": "project", "resource_id": lambda: random.choice([p['project'].id for p in projects_info])},
@@ -786,10 +808,13 @@ def seed_activity_logs(users, projects_info):
         {"action": "requested revision", "resource_type": "deliverable", "resource_id": lambda: random.choice([d.id for d in Deliverable.query.filter_by(status='revision_requested').all()]) if Deliverable.query.filter_by(status='revision_requested').count() > 0 else 1},
         {"action": "released escrow payment", "resource_type": "escrow", "resource_id": lambda: random.choice([e.id for e in EscrowTransaction.query.all()]) if EscrowTransaction.query.count() > 0 else 1},
         {"action": "completed project", "resource_type": "project", "resource_id": lambda: random.choice([p['project'].id for p in projects_info if p['project'].status == 'completed']) if any(p['project'].status == 'completed' for p in projects_info) else random.choice([p['project'].id for p in projects_info])},
-        {"action": "left a review", "resource_type": "review", "resource_id": lambda: random.choice([r.id for r in Review.query.all()]) if Review.query.count() > 0 else 1}
+        {"action": "left a review", "resource_type": "review", "resource_id": lambda: random.choice([r.id for r in Review.query.all()]) if Review.query.count() > 0 else 1},
+        {"action": "updated profile", "resource_type": "user", "resource_id": lambda: random.choice([u.id for u in users.values()])},
+        {"action": "uploaded portfolio item", "resource_type": "portfolio", "resource_id": lambda: random.choice([p.id for p in PortfolioItem.query.all()]) if PortfolioItem.query.count() > 0 else 1},
+        {"action": "sent message", "resource_type": "message", "resource_id": lambda: random.choice([m.id for m in Message.query.all()]) if Message.query.count() > 0 else 1}
     ]
     
-    for i in range(15):  # Create 15 activity entries
+    for i in range(15):
         user = random.choice(list(users.values()))
         activity_data = random.choice(activities)
         
@@ -801,17 +826,18 @@ def seed_activity_logs(users, projects_info):
             action=activity_data['action'],
             resource_type=activity_data['resource_type'],
             resource_id=resource_id,
+            details={"note": f"Automated seed data for {activity_data['action']}"},
             created_at=datetime.utcnow() - timedelta(hours=random.randint(1, 168))
         )
         db.session.add(activity)
     
     db.session.commit()
-    print("   ✅ Created activity log entries")
+    print("   ✅ Created 15 activity log entries")
 
 def print_success_message():
     """Print success message with testing guide"""
     print("\n" + "="*70)
-    print("🎉 COMPREHENSIVE ENDPOINT TESTING DATABASE READY!")
+    print("🎉 DATABASE SEEDED WITH PORTFOLIO SUPPORT!")
     print("="*70)
     
     print(f"\n📊 FINAL COUNTS:")
@@ -824,13 +850,20 @@ def print_success_message():
     print(f"   ⭐ Reviews: {Review.query.count()}")
     print(f"   📊 Activities: {ActivityLog.query.count()}")
     
-    print(f"\n🔑 TEST CREDENTIALS:")
-    print(f"   Admin:     admin@reelbrief.com / admin123")
-    print(f"   Client:    sarah@techstartup.com / client123")
+    print(f"\n TEST CREDENTIALS:")
+    print(f"   Admin:      admin@reelbrief.com / admin123")
+    print(f"   Client:     sarah@techstartup.com / client123")
     print(f"   Freelancer: alex@designer.com / freelancer123")
-    print(f"   Pending:   sophia@marketing.com / freelancer123")
+    print(f"   Pending:    sophia@marketing.com / freelancer123")
     
-    print(f"\n🚀 READY TO TEST ALL ENDPOINTS!")
+    print(f"\n PORTFOLIO FEATURES:")
+    print(f"   Profile pictures (avatar_url)")
+    print(f"   Professional titles")
+    print(f"   Locations")
+    print(f"   Image deliverables for covers")
+    print(f"   2 completed projects ready for portfolios")
+    
+    print(f"\n READY TO TEST PORTFOLIO!")
     print("="*70)
 
 def seed_database():

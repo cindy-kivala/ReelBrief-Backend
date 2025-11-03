@@ -26,7 +26,7 @@ from app.services.email_service import (
 )
 from app.utils.decorators import role_required
 
-deliverable_bp = Blueprint("deliverables", __name__, url_prefix="/api/deliverables")
+deliverable_bp = Blueprint("deliverable", __name__, url_prefix="/api/deliverable")
 
 # Constants
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB

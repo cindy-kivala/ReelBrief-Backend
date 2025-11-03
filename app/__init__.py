@@ -83,6 +83,7 @@ def create_app(config_class=Config):
     from app.resources.wallet_resource import wallet_bp
     from app.routes.test_notifications import test_bp
     from app.resources.project_approval_resource import project_approval_bp
+    from app.resources.portfolio_resource import portfolio_bp
 
     blueprints = [
         (auth_bp, "/api/auth"),
@@ -100,6 +101,7 @@ def create_app(config_class=Config):
         (wallet_bp, "/api/wallet"),
         (test_bp, "/api"),
         (project_approval_bp, "/api/projects"),
+        (portfolio_bp, "/api/portfolio"),
     ]
     for bp, prefix in blueprints:
         app.register_blueprint(bp, url_prefix=prefix)
