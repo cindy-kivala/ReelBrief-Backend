@@ -42,7 +42,7 @@ try:
 except Exception:
     FreelancerProfile = None
 
-auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
+auth_bp = Blueprint("auth_bp", __name__)
 
 AUTO_VERIFY_EMAILS = os.getenv("AUTO_VERIFY_EMAILS", "true").lower() == "true"
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
