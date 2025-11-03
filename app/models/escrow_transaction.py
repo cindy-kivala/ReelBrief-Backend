@@ -1,3 +1,4 @@
+# app/models/escrow.py
 """
 EscrowTransaction Model - Secure Funds Movement
 Owner: Caleb
@@ -5,7 +6,6 @@ Description: Tracks all money held and released in escrow between clients and fr
 """
 
 from datetime import datetime
-
 from app.extensions import db
 
 
@@ -13,7 +13,7 @@ class EscrowTransaction(db.Model):
     __tablename__ = "escrow_transactions"
 
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)  # ✅ Restored
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)  # Restored
     invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=True)
     sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)  # Client
     receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)  # Freelancer
@@ -23,10 +23,10 @@ class EscrowTransaction(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     released_at = db.Column(db.DateTime, nullable=True)
 
-    # ✅ Link back to Project
+    # Link back to Project
     project = db.relationship("Project", back_populates="escrow_transactions")
 
-    # ✅ Explicit relationship to Invoice
+    # Explicit relationship to Invoice
     invoice = db.relationship(
         "Invoice", back_populates="escrow_transaction", foreign_keys=[invoice_id]
     )

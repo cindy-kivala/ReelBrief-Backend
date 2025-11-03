@@ -1,14 +1,18 @@
 """
 Authentication Resource - Auth Endpoints
 Owner: Ryan
-Description: Handles registration, login, JWT, and password reset.
-Simplified version: Sends confirmation email on registration (no verification logic).
+Description:
+  Handles registration (with optional freelancer CV upload), login with JWT,
+  optional email verification (auto-verify toggle), refresh, current user (me),
+  and password reset. Also alerts admin on freelancer CV submission.
 """
 
 import os
 import secrets
-import traceback
 from datetime import datetime, timedelta
+from typing import Optional
+
+from flask import Blueprint, jsonify, request, send_from_directory
 
 from flask import Blueprint, current_app, jsonify, request, send_from_directory
 from flask_jwt_extended import (
@@ -17,38 +21,56 @@ from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
 )
+
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from app.extensions import db
 from app.models import User
 from app.services.email_service import (
     send_confirmation_email,
-)  # ✅ use this new simplified function
+)  # use this new simplified function
 from app.services.email_service import (
     send_password_reset_email,
+    send_verification_email,
+    send_admin_freelancer_application_email,
 )
+
+try:
+    from app.models.freelancer_profile import FreelancerProfile
+except Exception:
+    FreelancerProfile = None
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
+AUTO_VERIFY_EMAILS = os.getenv("AUTO_VERIFY_EMAILS", "true").lower() == "true"
+UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
 
-# -------------------- Health --------------------
+
 @auth_bp.route("/")
-def home():
-    return jsonify({"message": "Auth routes online"}), 200
+def auth_home():
+    """Simple liveness probe for auth routes."""
+    return jsonify({"message": "Auth routes are working!"}), 200
 
 
 @auth_bp.route("/test")
 def test():
+    """Tiny test route for quick checks."""
     return jsonify({"message": "Test route works!"}), 200
 
 
-# -------------------- Register --------------------
 @auth_bp.post("/register")
 def register():
-    """Register client/freelancer/admin (multipart for optional CV)."""
+    """
+    Register a user (client, freelancer, or admin).
+    Accepts multipart/form-data to support optional CV upload for freelancers (field name: 'cv').
+    """
     try:
         current_app.logger.info(f"/register form: {list(request.form.keys())}")
         current_app.logger.info(f"/register files: {list(request.files.keys())}")
+        print("/register form keys:", list(request.form.keys()))
+        print("/register files:", list(request.files.keys()))
 
         data = request.form
         file = request.files.get("cv")
@@ -71,6 +93,7 @@ def register():
             is_active=True,
             is_verified=True,
         )
+
         db.session.add(user)
         db.session.flush()
         current_app.logger.info(f"Created user {user.email} ({user.role})")
@@ -121,12 +144,12 @@ def register():
         # Commit all changes
         db.session.commit()
 
-        # ✅ Send confirmation email (no token)
+        # Send confirmation email (no token)
         try:
             send_confirmation_email(user)
-            current_app.logger.info(f"✅ Confirmation email sent to {user.email}")
+            current_app.logger.info(f"Confirmation email sent to {user.email}")
         except Exception as e:
-            current_app.logger.error(f"❌ Failed to send confirmation email: {str(e)}")
+            current_app.logger.error(f"Failed to send confirmation email: {str(e)}")
 
         return (
             jsonify(
@@ -142,12 +165,67 @@ def register():
         db.session.rollback()
         current_app.logger.error(f"REGISTER CRASH: {str(e)}")
         current_app.logger.error(traceback.format_exc())
+        db.session.commit()
+        print(f"Created user {user.email} ({user.role})")
+
+        if file and user.role == "freelancer":
+            os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+            file_path = os.path.join(UPLOAD_DIR, file.filename)
+            file.save(file_path)
+            print(f"CV saved to {file_path}")
+
+            profile_obj: Optional[object] = None
+            if FreelancerProfile is not None:
+                try:
+                    profile_obj = FreelancerProfile(
+                        user_id=user.id,
+                        cv_filename=file.filename,
+                        cv_url=f"/uploads/{file.filename}",
+                        cv_uploaded_at=datetime.utcnow(),
+                        application_status="pending",
+                    )
+                    db.session.add(profile_obj)
+                    db.session.commit()
+                    print("FreelancerProfile created (pending)")
+                except Exception as e:
+                    print(f"Could not create FreelancerProfile: {e}")
+
+            try:
+                sent_admin = send_admin_freelancer_application_email(user, profile_obj)
+                print(f"Admin alert about freelancer CV sent? {sent_admin}")
+            except Exception as e:
+                print(f"Admin alert email failed: {e}")
+
+        if AUTO_VERIFY_EMAILS:
+            user.is_verified = True
+            user.is_active = True
+            user.verification_token = None
+            db.session.commit()
+            print("AUTO_VERIFY_EMAILS=true → user auto-verified.")
+        else:
+            try:
+                ok, token = send_verification_email(user.email, user.id)
+                user.verification_token = token
+                db.session.commit()
+                print(f"Verification email → {user.email} | sent={ok}")
+            except Exception as e:
+                print(f"Verification email failed: {e}")
+
+        return jsonify({"message": "User registered successfully."}), 201
+
+    except Exception as e:
+        print("REGISTER CRASH:", e)
         return jsonify({"error": "Registration failed"}), 500
 
 
-# -------------------- Login --------------------
 @auth_bp.post("/login")
 def login():
+    """
+    Log in a user by email/password.
+    Returns access and refresh JWT tokens plus a sanitized user object.
+    Blocks unverified users unless AUTO_VERIFY_EMAILS is on (they will be verified at register).
+    """
     data = request.get_json() or {}
     email, password = data.get("email"), data.get("password")
 
@@ -167,7 +245,7 @@ def login():
 
         send_login_notification_email(user)
     except Exception as e:
-        current_app.logger.error(f"❌ Failed to send login email to {user.email}: {str(e)}")
+        current_app.logger.error(f"Failed to send login email to {user.email}: {str(e)}")
 
     claims = {"role": user.role, "email": user.email}
     access = create_access_token(
@@ -175,7 +253,11 @@ def login():
     )
     refresh = create_refresh_token(identity=user)
 
-    return jsonify({"user": user.to_dict(), "access_token": access, "refresh_token": refresh}), 200
+    return jsonify({
+        "user": user.to_dict(),
+        "access_token": access,
+        "refresh_token": refresh,
+    }), 200
 
 
 # -------------------- Refresh Token --------------------
@@ -199,10 +281,56 @@ def refresh():
         return jsonify({"error": "Token refresh failed"}), 500
 
 
-# -------------------- Current User --------------------
+-------------------- Current User --------------------
+@auth_bp.post("/verify-email")
+def verify_email():
+    """
+    Verify user with a token (emailed to them).
+    Only used when AUTO_VERIFY_EMAILS=false and you send real emails.
+    """
+    data = request.get_json() or {}
+    token = data.get("token")
+    if not token:
+        return jsonify({"error": "Missing token"}), 400
+
+    serializer = URLSafeTimedSerializer(os.getenv("SECRET_KEY", "devsecretkey"))
+    try:
+        user_id = serializer.loads(token, salt="email-verify", max_age=3600)
+    except SignatureExpired:
+        return jsonify({"error": "Token expired"}), 400
+    except BadSignature:
+        return jsonify({"error": "Invalid token"}), 400
+
+    user = User.query.get(user_id)
+    if not user or (getattr(user, "verification_token", None) and user.verification_token != token):
+        return jsonify({"error": "Invalid or already used token"}), 404
+
+    user.is_verified = True
+    user.is_active = True
+    user.verification_token = None
+    db.session.commit()
+
+    print(f"Verified email for {user.email}")
+    return jsonify({"message": "Email verified successfully"}), 200
+
+
+@auth_bp.post("/refresh")
+@jwt_required(refresh=True)
+def refresh():
+    """
+    Exchange a refresh token for a new access token.
+    """
+    current_user_id = get_jwt_identity()
+    new_access = create_access_token(identity=current_user_id, expires_delta=timedelta(hours=3))
+    return jsonify({"access_token": new_access}), 200
+
+
 @auth_bp.get("/me")
 @jwt_required()
 def me():
+    """
+    Get the current authenticated user's profile.
+    """
     uid = get_jwt_identity()
     user = User.query.get(uid)
     if not user:
@@ -210,9 +338,13 @@ def me():
     return jsonify({"user": user.to_dict()}), 200
 
 
-# -------------------- Reset Password --------------------
 @auth_bp.post("/reset-password")
 def reset_password():
+    """
+    Two-step password reset flow:
+      1) Request: { "email": "user@example.com" }
+      2) Confirm: { "token": "<reset_token>", "new_password": "..." }
+    """
     data = request.get_json() or {}
     email = data.get("email")
     token = data.get("token")
@@ -244,8 +376,10 @@ def reset_password():
     return jsonify({"error": "Invalid request"}), 400
 
 
-# -------------------- Serve Uploaded CVs --------------------
 @auth_bp.route("/uploads/<filename>")
 def serve_uploaded_file(filename: str):
-    upload_dir = os.path.join(os.getcwd(), "uploads")
-    return send_from_directory(upload_dir, filename)
+    """
+    Serve uploaded freelancer CVs from the uploads directory.
+    In production you should use a proper static file server or cloud storage.
+    """
+    return send_from_directory(UPLOAD_DIR, filename)

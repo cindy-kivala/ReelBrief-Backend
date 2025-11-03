@@ -8,7 +8,7 @@ import os
 
 from dotenv import load_dotenv
 from flasgger import Swagger
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from sendgrid import SendGridAPIClient
 
@@ -21,7 +21,7 @@ from app.utils.jwt_handlers import register_jwt_error_handlers
 def create_app(config_class=Config):
     """Application factory pattern for ReelBrief."""
 
-    # Load Environment Variables
+    #  Load Environment Variables
     load_dotenv()
 
     app = Flask(__name__)
@@ -132,6 +132,11 @@ def create_app(config_class=Config):
     )
     frontend_urls = [url.strip() for url in frontend_urls_str.split(",")]
     print(f"CORS configured for origins: {frontend_urls}")
+    # Serve uploads (CVs)
+    @app.route("/uploads/<filename>")
+    def serve_uploaded_file(filename):
+        upload_dir = os.path.join(os.getcwd(), "uploads")
+        return send_from_directory(upload_dir, filename)
 
     CORS(
         app,
@@ -161,6 +166,23 @@ def create_app(config_class=Config):
     register_jwt_error_handlers(jwt)
     register_error_handlers(app)
 
+    # # Blueprints
+    # from app.resources.auth_resource import auth_bp
+    # from app.resources.user_resource import user_bp
+    # from app.resources.deliverable_resource import deliverable_bp
+    # from app.resources.escrow_resource import escrow_bp
+    # from app.resources.feedback_resource import feedback_bp
+    # # from app.resources.project_resource import project_bp
+
+    # app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    # app.register_blueprint(user_bp, url_prefix="/api/users")
+    # # app.register_blueprint(project_bp, url_prefix="/api/projects")
+    # app.register_blueprint(deliverable_bp, url_prefix="/api/deliverable")
+    # app.register_blueprint(feedback_bp, url_prefix="/api/feedback")
+    # app.register_blueprint(escrow_bp, url_prefix="/api/escrow")
+    # # app.register_blueprint(project_bp, url_prefix="/api/projects")
+
+    #  Swagger Documentation 
     swagger_config = {
         "headers": [],
         "specs": [
@@ -186,4 +208,12 @@ def create_app(config_class=Config):
     }
     Swagger(app, config=swagger_config, template=swagger_template)
 
+    #  Return Configured App 
+    # with app.app_context():
+    #     print("\n=== Registered Routes ===")
+    #     for rule in app.url_map.iter_rules():
+    #         print(f"{rule.endpoint}: {rule.rule} {list(rule.methods - {'OPTIONS', 'HEAD'})}")
+    #     print("========================\n")
+
+    
     return app
