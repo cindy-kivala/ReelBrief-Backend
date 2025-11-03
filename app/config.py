@@ -14,14 +14,20 @@ class Config:
 
     # Database - FIXED for Render production
     if os.environ.get('DATABASE_URL'):
-        # Render PostgreSQL (production) - fix connection string
-        SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL').replace('postgres://', 'postgresql://')
-    else:
-        # Local development
-        SQLALCHEMY_DATABASE_URI = os.getenv(
-            "DATABASE_URL", 
-            "postgresql://reelbrief_user:cindy123@localhost:5432/reelbrief_db"
-        )
+    # Render PostgreSQL (production) - fix connection string with SSL
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://')
+    # Add SSL requirement for Render
+    if 'render.com' in database_url and 'sslmode' not in database_url:
+        database_url += '?sslmode=require'
+    SQLALCHEMY_DATABASE_URI = database_url
+else:
+    # Local development
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "DATABASE_URL", 
+        "postgresql://reelbrief_user:cindy123@localhost:5432/reelbrief_db"
+    )
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
