@@ -180,14 +180,24 @@ def get_available_freelancers():
         for profile in available_freelancers:
             user = User.query.get(profile.user_id)
             if user:
+                # FIX: Handle skills properly - check different possible attribute names
+                skills = []
+                if hasattr(profile, 'skills') and profile.skills:
+                    skills = [skill.name for skill in profile.skills]
+                elif hasattr(profile, 'skill_associations') and profile.skill_associations:
+                    skills = [skill_assoc.skill.name for skill_assoc in profile.skill_associations]
+                elif hasattr(profile, 'freelancer_skills') and profile.freelancer_skills:
+                    skills = [fs.skill.name for fs in profile.freelancer_skills]
+                
                 freelancers_data.append({
-                    "user_id": user.id,  # This is the ID to use for assignment
+                    "user_id": user.id,
                     "freelancer_profile_id": profile.id,
                     "name": f"{user.first_name} {user.last_name}",
                     "email": user.email,
-                    "skills": [skill.name for skill in profile.skills],
+                    "skills": skills,  # Use the fixed skills list
                     "years_experience": profile.years_experience,
-                    "hourly_rate": profile.hourly_rate
+                    "hourly_rate": profile.hourly_rate,
+                    "bio": profile.bio
                 })
         
         return jsonify({
@@ -196,49 +206,51 @@ def get_available_freelancers():
         }), 200
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        traceback.print_exc()  # This will show the exact error
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-# POST /api/projects/<id>/assign-freelancer
-@project_bp.route("/<int:project_id>/assign-freelancer", methods=["POST"])
-@jwt_required()
-def assign_freelancer(project_id):
-    data = request.get_json() or {}
-    freelancer_user_id = data.get("freelancer_id")  # This should be the USER ID
+# # POST /api/projects/<id>/assign-freelancer
+# @project_bp.route("/<int:project_id>/assign-freelancer", methods=["POST"])
+# @jwt_required()
+# def assign_freelancer(project_id):
+#     data = request.get_json() or {}
+#     freelancer_user_id = data.get("freelancer_id")  # This should be the USER ID
 
-    project = Project.query.get_or_404(project_id)
+#     project = Project.query.get_or_404(project_id)
     
-    # Check if user exists
-    freelancer_user = User.query.get(freelancer_user_id)
-    if not freelancer_user:
-        return jsonify({"error": f"User with ID {freelancer_user_id} not found"}), 404
+#     # Check if user exists
+#     freelancer_user = User.query.get(freelancer_user_id)
+#     if not freelancer_user:
+#         return jsonify({"error": f"User with ID {freelancer_user_id} not found"}), 404
     
-    # Check if user has a freelancer profile
-    freelancer_profile = FreelancerProfile.query.filter_by(user_id=freelancer_user_id).first()
-    if not freelancer_profile:
-        return jsonify({"error": "User is not registered as a freelancer"}), 400
+#     # Check if user has a freelancer profile
+#     freelancer_profile = FreelancerProfile.query.filter_by(user_id=freelancer_user_id).first()
+#     if not freelancer_profile:
+#         return jsonify({"error": "User is not registered as a freelancer"}), 400
 
-    if not freelancer_profile.open_to_work:
-        return jsonify({"error": "Freelancer not open to work"}), 400
+#     if not freelancer_profile.open_to_work:
+#         return jsonify({"error": "Freelancer not open to work"}), 400
 
-    # Assign using the USER ID (this should match the foreign key constraint)
-    project.freelancer_id = freelancer_user.id  # Use the user ID
-    project.status = "matched"
-    project.matched_at = db.func.now()
-    freelancer_profile.open_to_work = False
+#     # Assign using the USER ID (this should match the foreign key constraint)
+#     project.freelancer_id = freelancer_user.id  # Use the user ID
+#     project.status = "matched"
+#     project.matched_at = db.func.now()
+#     freelancer_profile.open_to_work = False
 
-    db.session.commit()
+#     db.session.commit()
 
-    send_email(
-        freelancer_user.email,
-        "New Project Assigned",
-        f"<p>Hi {freelancer_user.first_name},</p><p>You've been assigned to project <b>{project.title}</b>.</p>",
-    )
+#     send_email(
+#         freelancer_user.email,
+#         "New Project Assigned",
+#         f"<p>Hi {freelancer_user.first_name},</p><p>You've been assigned to project <b>{project.title}</b>.</p>",
+#     )
 
-    return jsonify({
-        "message": "Freelancer assigned successfully", 
-        "project": project.to_dict()
-    }), 200
+#     return jsonify({
+#         "message": "Freelancer assigned successfully", 
+#         "project": project.to_dict()
+#     }), 200
 
 
 # POST /api/projects/<id>/complete

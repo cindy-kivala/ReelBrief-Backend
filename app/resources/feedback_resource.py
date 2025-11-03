@@ -14,8 +14,9 @@ def submit_feedback():
         data = request.get_json()
         
         print("Received feedback data:", data)
+        print("Current user ID:", current_user)  # Debug line
         
-        # Validate required fields based on your Feedback model
+        # Validate required fields based on our Feedback model
         required_fields = ['deliverable_id', 'feedback_type', 'content']
         missing_fields = []
         
@@ -31,7 +32,7 @@ def submit_feedback():
                 'success': False
             }), 400
         
-        # Validate feedback_type (matches your model)
+        # Validate feedback_type (matches our model)
         valid_feedback_types = ['comment', 'revision', 'approval']
         if data['feedback_type'] not in valid_feedback_types:
             return jsonify({
@@ -40,7 +41,7 @@ def submit_feedback():
                 'success': False
             }), 400
         
-        # Validate priority if provided (matches your model)
+        # Validate priority if provided (matches our model)
         if 'priority' in data and data['priority']:
             valid_priorities = ['low', 'medium', 'high']
             if data['priority'] not in valid_priorities:
@@ -70,10 +71,10 @@ def submit_feedback():
                     'success': False
                 }), 404
         
-        # Create feedback (matches your model structure)
+        # Create feedback
         feedback = Feedback(
             deliverable_id=data['deliverable_id'],
-            user_id=current_user['id'],
+            user_id=current_user,  # current_user is the integer user ID
             parent_feedback_id=parent_feedback_id,
             feedback_type=data['feedback_type'],
             content=data['content'],

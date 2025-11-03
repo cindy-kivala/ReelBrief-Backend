@@ -87,6 +87,7 @@ def create_app(config_class=Config):
     from app.resources.user_resource import user_bp
     from app.resources.skills_resource import skills_bp
     from app.routes.test_notifications import test_bp
+    from app.resources.project_approval_resource import project_approval_bp
 
     # Caleb's routes
     from app.resources.project_resource import project_bp
@@ -109,6 +110,7 @@ def create_app(config_class=Config):
     app.register_blueprint(activity_bp, url_prefix="/api/activity")
     app.register_blueprint(skills_bp, url_prefix="/api")
     app.register_blueprint(test_bp, url_prefix="/api")
+    app.register_blueprint(project_approval_bp, url_prefix="/api/projects")
 
     # FIXED: CORS Configuration AFTER Blueprint Registration
     # Load from .env → FRONTEND_URLS=http://localhost:5173,https://reel-brief-frontend.vercel.app

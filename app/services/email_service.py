@@ -14,7 +14,7 @@ from app.extensions import sg
 
 FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL", "michenicaleb@gmail.com")
 FROM_NAME = os.getenv("SENDGRID_FROM_NAME", "ReelBrief Notifications")
-BASE_URL = os.getenv("BASE_URL", "http://localhost:5174")
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5173")
 SECRET_KEY = os.getenv("SECRET_KEY", "devsecretkey")
 
 
