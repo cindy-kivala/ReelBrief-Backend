@@ -116,18 +116,18 @@ def create_app(config_class=Config):
     for bp, prefix in blueprints:
         app.register_blueprint(bp, url_prefix=prefix)
 
-    # FIXED: CORS Configuration for Production
+        # FIXED: CORS Configuration for Production
     # Production CORS setup
     if os.environ.get('FLASK_ENV') == 'production':
         # In production, allow your Vercel domain and any others you need
         frontend_urls = [
             "https://reel-brief-frontend.vercel.app",
-            "https://reel-brief-frontend.vercel.app/"
+            "http://localhost:5173"  # For local testing
         ]
     else:
-        # Development - localhost
+        # Development
         frontend_urls = ["http://localhost:5173"]
-    
+
     print(f"CORS configured for origins: {frontend_urls}")
 
     # Serve uploads (CVs) - with production path adjustment
