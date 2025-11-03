@@ -31,6 +31,14 @@ class Config:
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    SQLALCHEMY_ENGINE_OPTIONS = {
+    "pool_pre_ping": True,
+    "pool_recycle": 1800,
+    "pool_size": 5,
+    "max_overflow": 10,
+    }
+
+
     # JWT Configuration
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecret")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
