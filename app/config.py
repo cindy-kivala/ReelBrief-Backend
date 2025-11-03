@@ -12,10 +12,17 @@ class Config:
     # General Security
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL", "postgresql://reelbrief_user:cindy123@localhost:5432/reelbrief_db"
-    )
+    # Database - FIXED for Render production
+    if os.environ.get('DATABASE_URL'):
+        # Render PostgreSQL (production) - fix connection string
+        SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL').replace('postgres://', 'postgresql://')
+    else:
+        # Local development
+        SQLALCHEMY_DATABASE_URI = os.getenv(
+            "DATABASE_URL", 
+            "postgresql://reelbrief_user:cindy123@localhost:5432/reelbrief_db"
+        )
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # JWT Configuration
